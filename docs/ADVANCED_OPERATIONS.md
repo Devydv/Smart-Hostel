@@ -20,6 +20,20 @@ Health check:
 make health EC2_HOST=<host>
 ```
 
+Environment parity check:
+
+```bash
+make parity-check
+```
+
+Observability stack (local):
+
+```bash
+make monitor-up
+make monitor-status
+make monitor-down
+```
+
 Developer environment helpers:
 
 ```bash
@@ -72,6 +86,24 @@ Then verify:
 ```bash
 curl --fail http://<EC2_HOST>:5000/debug/db
 ```
+
+## One-Command Rollback
+
+Rollback to a known-good commit/tag using the same deployment playbook:
+
+```bash
+make rollback REF=<git_ref>
+```
+
+Example:
+
+```bash
+make rollback REF=v1.0-deploy-green
+```
+
+Post-rollback checks:
+1. `make health EC2_HOST=<host>`
+2. `curl --fail http://<EC2_HOST>:5000/metrics`
 
 ## Known-Good Reference
 

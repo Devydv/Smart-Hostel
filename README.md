@@ -42,10 +42,55 @@ Most common targets:
 3. `make status`
 4. `make lint`
 5. `make test`
-6. `make ci-check`
-7. `make clean`
-8. `make down`
-9. `make health EC2_HOST=<host>`
+6. `make parity-check`
+7. `make ci-check`
+8. `make monitor-up`
+9. `make monitor-status`
+10. `make monitor-down`
+11. `make clean`
+12. `make down`
+13. `make health EC2_HOST=<host>`
+
+## Observability Stack (Prometheus, Grafana, Loki)
+
+Start observability services:
+
+```bash
+make monitor-up
+```
+
+Check status:
+
+```bash
+make monitor-status
+```
+
+Stop observability services:
+
+```bash
+make monitor-down
+```
+
+Default local URLs:
+1. App: http://localhost:5000
+2. App metrics: http://localhost:5000/metrics
+3. Prometheus: http://localhost:9090
+4. Grafana: http://localhost:3000 (admin/admin)
+5. Loki: http://localhost:3100/ready
+
+## Rollback (One Command)
+
+Rollback to any known-good tag/commit:
+
+```bash
+make rollback REF=<git_ref>
+```
+
+Example:
+
+```bash
+make rollback REF=v1.0-deploy-green
+```
 
 ## Project Map
 

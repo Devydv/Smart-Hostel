@@ -20,6 +20,7 @@ App URL:
 ## 2. Run checks before commit
 
 ```bash
+make parity-check
 make ci-check
 ```
 
@@ -52,4 +53,10 @@ git push origin <branch>
 
 ```bash
 make down
+```
+
+Optional: stop observability stack if started.
+
+```bash
+make monitor-down
 ```

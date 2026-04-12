@@ -9,6 +9,7 @@
     repo_url: https://github.com/Devydv/Smart-Hoste.git
     repo_branch: main
     install_packages: false
+    enable_observability: true
 
   tasks:
     - name: Install required system packages
@@ -47,6 +48,16 @@
         version: "{{ repo_branch }}"
         force: true
 
+    - name: Validate compose configuration (runtime parity guard)
+      shell: |
+        if docker compose version >/dev/null 2>&1; then
+          docker compose config >/dev/null
+        else
+          docker-compose config >/dev/null
+        fi
+      args:
+        chdir: "{{ app_dir }}"
+
     - name: Build and start containers
       shell: |
         if docker compose version >/dev/null 2>&1; then
@@ -54,6 +65,17 @@
         else
           docker-compose rm -sf web mysql || true
           docker-compose up -d --build --force-recreate mysql web
+        fi
+      args:
+        chdir: "{{ app_dir }}"
+
+    - name: Start observability stack
+      when: enable_observability | bool
+      shell: |
+        if docker compose version >/dev/null 2>&1; then
+          docker compose -f docker-compose.yml -f infra/observability/docker-compose.observability.yml up -d prometheus grafana loki promtail cadvisor node-exporter
+        else
+          docker-compose -f docker-compose.yml -f infra/observability/docker-compose.observability.yml up -d prometheus grafana loki promtail cadvisor node-exporter
         fi
       args:
         chdir: "{{ app_dir }}"
