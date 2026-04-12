@@ -12,6 +12,19 @@
     enable_observability: true
 
   tasks:
+    - name: Check deployment prerequisites
+      shell: |
+        set -e
+        command -v git >/dev/null 2>&1
+        command -v docker >/dev/null 2>&1
+        if docker compose version >/dev/null 2>&1; then
+          exit 0
+        fi
+        command -v docker-compose >/dev/null 2>&1
+      register: prereq_check
+      changed_when: false
+      failed_when: false
+
     - name: Install required system packages
       apt:
         name:
@@ -21,7 +34,9 @@
         state: present
         update_cache: true
         cache_valid_time: 3600
-      when: install_packages | bool
+      when:
+        - install_packages | bool
+        - prereq_check.rc != 0
 
     - name: Ensure Docker service is running
       service:
