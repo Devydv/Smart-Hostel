@@ -1,7 +1,7 @@
 ---
 - name: Deploy Smart Hostel with Docker Compose
   hosts: app
-  become: true
+  become: "{{ use_become | bool }}"
   gather_facts: false
 
   vars:
@@ -9,6 +9,7 @@
     repo_url: https://github.com/Devydv/Smart-Hoste.git
     repo_branch: main
     install_packages: false
+    use_become: true
     web_image: ""
     ghcr_username: ""
     ghcr_token: ""
@@ -30,6 +31,7 @@
         name: docker
         enabled: true
         state: started
+      when: use_become | bool
 
     - name: Create app directory
       file:

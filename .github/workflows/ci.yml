@@ -141,10 +141,16 @@ jobs:
           EOF
 
       - name: Pre-deploy SSH check
+        id: ssh_check
         if: steps.secrets.outputs.ready == 'true'
         run: |
           for attempt in 1 2 3 4 5 6; do
             if ssh -i /tmp/deploy_key.pem -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=30 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "echo SSH_OK"; then
+              if ssh -i /tmp/deploy_key.pem -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=30 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "sudo -n true" >/dev/null 2>&1; then
+                echo "can_sudo=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "can_sudo=false" >> "$GITHUB_OUTPUT"
+              fi
               exit 0
             fi
             echo "SSH check failed on attempt ${attempt}, retrying in 15s..."
@@ -161,10 +167,19 @@ jobs:
         run: |
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           WEB_IMAGE="ghcr.io/${OWNER_LC}/smart-hoste-web:${{ github.sha }}"
+          if [ "${{ steps.ssh_check.outputs.can_sudo }}" = "true" ]; then
+            APP_DIR="/opt/smart_hostel"
+            USE_BECOME="true"
+            echo "Passwordless sudo available: deploying with become to ${APP_DIR}."
+          else
+            APP_DIR="/home/${{ secrets.EC2_USER }}/smart_hostel"
+            USE_BECOME="false"
+            echo "No passwordless sudo detected: deploying without become to ${APP_DIR}."
+          fi
           for attempt in 1 2; do
             echo "Ansible deploy attempt ${attempt}..."
             if timeout 25m ansible-playbook -i /tmp/inventory.ini infra/ansible/deploy.yml \
-              --extra-vars "repo_url=https://github.com/${{ github.repository }}.git repo_branch=main app_dir=/opt/smart_hostel install_packages=false web_image=${WEB_IMAGE} ghcr_username=${GHCR_USER} ghcr_token=${GHCR_TOKEN}"; then
+              --extra-vars "repo_url=https://github.com/${{ github.repository }}.git repo_branch=main app_dir=${APP_DIR} install_packages=false use_become=${USE_BECOME} web_image=${WEB_IMAGE} ghcr_username=${GHCR_USER} ghcr_token=${GHCR_TOKEN}"; then
               exit 0
             fi
             echo "Deploy attempt ${attempt} failed, retrying in 20s..."
