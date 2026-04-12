@@ -57,13 +57,13 @@ jobs:
       - name: Test
         run: pytest -q
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: "v1.31.0"
-
-      - name: Validate Kubernetes manifests (client dry-run)
-        run: kubectl create --dry-run=client -f infra/k8s
+      - name: Validate Kubernetes manifests (offline schema)
+        run: |
+          curl -sSL -o /tmp/kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar -xzf /tmp/kubeconform.tar.gz -C /tmp kubeconform
+          chmod +x /tmp/kubeconform
+          /tmp/kubeconform -summary -strict -ignore-missing-schemas infra/k8s/*.yaml
 
       - name: Docker build
         run: docker build -t smart-hostel:${{ github.sha }} .
