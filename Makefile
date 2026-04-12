@@ -4,12 +4,11 @@ PYTHON ?= $(shell if [ -x ./.venv/bin/python ]; then echo ./.venv/bin/python; el
 PIP ?= $(PYTHON) -m pip
 COMPOSE ?= docker compose
 EC2_HOST ?=
-REPO ?= Devydv/Smart-Hoste
-REF ?=
+REPO ?= Devydv/Smart-Hostel
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup up down status logs lint test ci-check clean health k8s-validate deploy-manual ci-cd-show parity-check rollback
+.PHONY: help setup up down status logs lint test ci-check clean health k8s-validate ci-cd-show parity-check
 
 help:
 	@echo "Available targets:"
@@ -25,8 +24,6 @@ help:
 	@echo "  make clean          - Remove local cache artifacts"
 	@echo "  make k8s-validate   - Offline Kubernetes manifest validation"
 	@echo "  make ci-cd-show     - Show latest full CI/CD run details"
-	@echo "  make deploy-manual  - Manual Ansible deploy (needs infra/ansible/inventory.ini)"
-	@echo "  make rollback REF=<git_ref> - One-command rollback deploy"
 	@echo "  make health EC2_HOST=<host> - Check deployed health endpoint"
 
 setup:
@@ -78,12 +75,3 @@ ci-cd-show:
 health:
 	if [ -z "$(EC2_HOST)" ]; then echo "EC2_HOST is required"; exit 1; fi
 	curl --fail "http://$(EC2_HOST):5000/debug/db"
-
-deploy-manual:
-	ansible-playbook -i infra/ansible/inventory.ini infra/ansible/deploy.yml \
-	  --extra-vars "repo_url=https://github.com/Devydv/Smart-Hoste.git repo_branch=main app_dir=/opt/smart_hostel install_packages=false"
-
-rollback:
-	if [ -z "$(REF)" ]; then echo "REF is required, e.g. make rollback REF=v1.0-deploy-green"; exit 1; fi
-	ansible-playbook -i infra/ansible/inventory.ini infra/ansible/deploy.yml \
-	  --extra-vars "repo_url=https://github.com/Devydv/Smart-Hoste.git repo_branch=$(REF) app_dir=/opt/smart_hostel install_packages=false"

@@ -6,13 +6,7 @@ Use this document for infrastructure and deployment operations.
 
 Automated deploy is driven by:
 1. `.github/workflows/ci.yml`
-2. `infra/ansible/deploy.yml`
-
-Manual deploy:
-
-```bash
-make deploy-manual
-```
+2. Direct SSH execution from the CD job on push to `main`
 
 Health check:
 
@@ -29,8 +23,6 @@ Use cluster-independent schema validation:
 ```bash
 make k8s-validate
 ```
-
-CI uses kubeconform for the same purpose.
 
 ## Terraform
 
@@ -55,11 +47,14 @@ Details are documented in `infra/terraform/bootstrap/README.md`.
 
 ## Recovery
 
-Quick recovery command:
+Quick recovery command from the deployment host:
 
 ```bash
-ansible-playbook -i infra/ansible/inventory.ini infra/ansible/deploy.yml \
-  --extra-vars "repo_url=https://github.com/Devydv/Smart-Hoste.git repo_branch=main app_dir=/opt/smart_hostel install_packages=false"
+cd ~/smart_hostel
+git fetch origin main
+git checkout main
+git reset --hard origin/main
+docker compose up -d --build mysql web
 ```
 
 Then verify:
@@ -67,23 +62,6 @@ Then verify:
 ```bash
 curl --fail http://<EC2_HOST>:5000/debug/db
 ```
-
-## One-Command Rollback
-
-Rollback to a known-good commit/tag using the same deployment playbook:
-
-```bash
-make rollback REF=<git_ref>
-```
-
-Example:
-
-```bash
-make rollback REF=v1.0-deploy-green
-```
-
-Post-rollback checks:
-1. `make health EC2_HOST=<host>`
 
 ## Known-Good Reference
 

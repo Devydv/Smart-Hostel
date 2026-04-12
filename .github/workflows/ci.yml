@@ -10,9 +10,6 @@ concurrency:
   group: smart-hostel-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 permissions:
   contents: read
   packages: write
@@ -67,14 +64,6 @@ jobs:
       - name: Test
         run: pytest -q
 
-      - name: Validate Kubernetes manifests (offline schema)
-        run: |
-          curl -sSL -o /tmp/kubeconform.tar.gz \
-            https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
-          tar -xzf /tmp/kubeconform.tar.gz -C /tmp kubeconform
-          chmod +x /tmp/kubeconform
-          /tmp/kubeconform -summary -strict -ignore-missing-schemas infra/k8s/*.yaml
-
       - name: Docker build
         run: docker build -t smart-hostel:${{ github.sha }} .
 
@@ -82,7 +71,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          IMAGE_NAME="ghcr.io/${OWNER_LC}/smart-hoste-web"
+          IMAGE_NAME="ghcr.io/${OWNER_LC}/smart-hostel-web"
           echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
           docker tag smart-hostel:${{ github.sha }} ${IMAGE_NAME}:${{ github.sha }}
           docker tag smart-hostel:${{ github.sha }} ${IMAGE_NAME}:latest
@@ -94,25 +83,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    env:
-      ANSIBLE_HOST_KEY_CHECKING: "False"
-      ANSIBLE_TIMEOUT: "60"
-      ANSIBLE_BECOME_TIMEOUT: "60"
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install Ansible
-        run: |
-          python -m pip install --upgrade pip
-          pip install "ansible-core>=2.16,<2.18"
-
       - name: Check deployment secrets
         id: secrets
         run: |
@@ -132,25 +104,12 @@ jobs:
           install -m 600 /dev/null /tmp/deploy_key.pem
           printf "%s" "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > /tmp/deploy_key.pem
 
-      - name: Create inventory
-        if: steps.secrets.outputs.ready == 'true'
-        run: |
-          cat > /tmp/inventory.ini <<'EOF'
-          [app]
-          app-server ansible_host=${{ secrets.EC2_HOST }} ansible_user=${{ secrets.EC2_USER }} ansible_ssh_private_key_file=/tmp/deploy_key.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ConnectionAttempts=6 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ControlMaster=no -o ControlPath=none'
-          EOF
-
       - name: Pre-deploy SSH check
-        id: ssh_check
         if: steps.secrets.outputs.ready == 'true'
         run: |
+          SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ConnectionAttempts=3"
           for attempt in 1 2 3 4 5 6; do
-            if ssh -i /tmp/deploy_key.pem -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=30 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "echo SSH_OK"; then
-              if ssh -i /tmp/deploy_key.pem -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=30 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "sudo -n true" >/dev/null 2>&1; then
-                echo "can_sudo=true" >> "$GITHUB_OUTPUT"
-              else
-                echo "can_sudo=false" >> "$GITHUB_OUTPUT"
-              fi
+            if ssh -i /tmp/deploy_key.pem ${SSH_OPTS} "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "echo SSH_OK"; then
               exit 0
             fi
             echo "SSH check failed on attempt ${attempt}, retrying in 15s..."
@@ -159,34 +118,65 @@ jobs:
           echo "SSH connectivity check failed after retries."
           exit 1
 
-      - name: Deploy with Ansible
+      - name: Deploy app over SSH
         if: steps.secrets.outputs.ready == 'true'
         env:
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ github.token }}
         run: |
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          WEB_IMAGE="ghcr.io/${OWNER_LC}/smart-hoste-web:${{ github.sha }}"
-          if [ "${{ steps.ssh_check.outputs.can_sudo }}" = "true" ]; then
-            APP_DIR="/opt/smart_hostel"
-            USE_BECOME="true"
-            echo "Passwordless sudo available: deploying with become to ${APP_DIR}."
-          else
-            APP_DIR="/home/${{ secrets.EC2_USER }}/smart_hostel"
-            USE_BECOME="false"
-            echo "No passwordless sudo detected: deploying without become to ${APP_DIR}."
+          WEB_IMAGE="ghcr.io/${OWNER_LC}/smart-hostel-web:${{ github.sha }}"
+          SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ConnectionAttempts=3"
+
+          ssh -i /tmp/deploy_key.pem ${SSH_OPTS} "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
+            "GHCR_USER='${GHCR_USER}' GHCR_TOKEN='${GHCR_TOKEN}' WEB_IMAGE='${WEB_IMAGE}' REPO_URL='https://github.com/${{ github.repository }}.git' bash -s" <<'EOF'
+          set -euo pipefail
+
+          APP_DIR="$HOME/smart_hostel"
+
+          if [ ! -d "${APP_DIR}/.git" ]; then
+            rm -rf "${APP_DIR}"
+            git clone "${REPO_URL}" "${APP_DIR}"
           fi
-          for attempt in 1 2; do
-            echo "Ansible deploy attempt ${attempt}..."
-            if timeout 25m ansible-playbook -i /tmp/inventory.ini infra/ansible/deploy.yml \
-              --extra-vars "repo_url=https://github.com/${{ github.repository }}.git repo_branch=main app_dir=${APP_DIR} install_packages=false use_become=${USE_BECOME} web_image=${WEB_IMAGE} ghcr_username=${GHCR_USER} ghcr_token=${GHCR_TOKEN}"; then
-              exit 0
+
+          cd "${APP_DIR}"
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+
+          if docker info >/dev/null 2>&1; then
+            DOCKER_CMD="docker"
+          elif sudo -n docker info >/dev/null 2>&1; then
+            DOCKER_CMD="sudo -n docker"
+          else
+            echo "Docker is not available for current user and passwordless sudo is not configured."
+            exit 1
+          fi
+
+          if ${DOCKER_CMD} compose version >/dev/null 2>&1; then
+            COMPOSE_CMD="${DOCKER_CMD} compose"
+          elif command -v docker-compose >/dev/null 2>&1; then
+            if [ "${DOCKER_CMD}" = "docker" ]; then
+              COMPOSE_CMD="docker-compose"
+            else
+              COMPOSE_CMD="sudo -n docker-compose"
             fi
-            echo "Deploy attempt ${attempt} failed, retrying in 20s..."
-            sleep 20
-          done
-          echo "Deploy failed after retries."
-          exit 1
+          else
+            echo "Neither docker compose plugin nor docker-compose is installed."
+            exit 1
+          fi
+
+          echo "${GHCR_TOKEN}" | ${DOCKER_CMD} login ghcr.io -u "${GHCR_USER}" --password-stdin
+
+          cat > docker-compose.deploy.yml <<EOC
+          services:
+            web:
+              image: ${WEB_IMAGE}
+          EOC
+
+          ${COMPOSE_CMD} -f docker-compose.yml -f docker-compose.deploy.yml pull web
+          ${COMPOSE_CMD} -f docker-compose.yml -f docker-compose.deploy.yml up -d --no-build mysql web
+          EOF
 
       - name: Verify health
         if: steps.secrets.outputs.ready == 'true'

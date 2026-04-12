@@ -11,7 +11,6 @@ ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ROOT / "docker-compose.yml"
 CI_WORKFLOW = ROOT / ".github/workflows/ci.yml"
 DOCKERFILE = ROOT / "Dockerfile"
-DEPLOY_PLAYBOOK = ROOT / "infra/ansible/deploy.yml"
 
 REQUIRED_DB_KEYS = {"DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"}
 
@@ -112,7 +111,6 @@ def main() -> None:
     compose_content = COMPOSE.read_text(encoding="utf-8")
     ci_content = CI_WORKFLOW.read_text(encoding="utf-8")
     dockerfile_content = DOCKERFILE.read_text(encoding="utf-8")
-    deploy_content = DEPLOY_PLAYBOOK.read_text(encoding="utf-8")
 
     compose_env = parse_compose_web_env_keys(compose_content)
     if not REQUIRED_DB_KEYS.issubset(compose_env):
@@ -127,13 +125,7 @@ def main() -> None:
     if docker_py != ci_py:
         fail(f"Python version mismatch: Dockerfile uses {docker_py}, CI uses {ci_py}")
 
-    if "docker compose up -d --build web" not in deploy_content:
-        fail("Deploy playbook is not using docker compose web build/start command")
-
-    if "docker compose config >/dev/null" not in deploy_content:
-        fail("Deploy playbook missing compose parity validation step")
-
-    print("[parity-check] PASS: local compose, CI, and deploy runtime parity checks succeeded")
+    print("[parity-check] PASS: local compose and CI runtime parity checks succeeded")
 
 
 if __name__ == "__main__":

@@ -48,39 +48,24 @@ Most common targets:
 9. `make down`
 10. `make health EC2_HOST=<host>`
 
-## Rollback (One Command)
-
-Rollback to any known-good tag/commit:
-
-```bash
-make rollback REF=<git_ref>
-```
-
-Example:
-
-```bash
-make rollback REF=v1.0-deploy-green
-```
-
 ## Project Map
 
 1. App code: `app.py`, `db.py`, `templates/`, `static/`
 2. Containers: `Dockerfile`, `docker-compose.yml`
 3. CI/CD: `.github/workflows/ci.yml`
-4. Deployment: `infra/ansible/deploy.yml`
-5. Infrastructure: `infra/terraform/`
-6. Kubernetes manifests: `infra/k8s/`
+4. Infrastructure: `infra/terraform/`
+5. Kubernetes manifests: `infra/k8s/`
 
 ## Documentation
 
 1. Known-good baseline: `KNOWN_GOOD.md`
-2. Advanced operations (Terraform, Ansible, K8s, recovery): `docs/ADVANCED_OPERATIONS.md`
+2. Advanced operations (Terraform, K8s, recovery): `docs/ADVANCED_OPERATIONS.md`
 3. Terraform backend bootstrap only: `infra/terraform/bootstrap/README.md`
 
 ## CI/CD Summary
 
-1. Push/PR triggers CI (lint, test, offline k8s manifest validation, docker build).
-2. Push to `main` triggers CD (Ansible deploy + health check).
+1. Push/PR triggers CI (lint, parity check, test, docker build).
+2. Push to `main` triggers CD (SSH deploy + health check).
 
 Required repository secrets for CD:
 1. `EC2_HOST`
