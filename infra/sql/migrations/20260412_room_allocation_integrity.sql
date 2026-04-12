@@ -24,10 +24,6 @@ JOIN room_allocation newer
 
 COMMIT;
 
-ALTER TABLE room_allocation
-  ADD COLUMN IF NOT EXISTS approved_student_id INT GENERATED ALWAYS AS (CASE WHEN status='Approved' THEN student_id ELSE NULL END) STORED,
-  ADD COLUMN IF NOT EXISTS pending_student_id INT GENERATED ALWAYS AS (CASE WHEN status='Pending' THEN student_id ELSE NULL END) STORED;
-
 SET @has_idx_room_status := (
   SELECT COUNT(1)
   FROM information_schema.statistics
@@ -69,7 +65,7 @@ SET @has_uq_approved := (
 );
 SET @sql := IF(
   @has_uq_approved = 0,
-  'CREATE UNIQUE INDEX uq_ra_single_approved_per_student ON room_allocation (approved_student_id)',
+  'CREATE UNIQUE INDEX uq_ra_single_approved_per_student ON room_allocation ((CASE WHEN status=''Approved'' THEN student_id ELSE NULL END))',
   'SELECT ''uq_ra_single_approved_per_student already exists'''
 );
 PREPARE stmt FROM @sql;
@@ -85,7 +81,7 @@ SET @has_uq_pending := (
 );
 SET @sql := IF(
   @has_uq_pending = 0,
-  'CREATE UNIQUE INDEX uq_ra_single_pending_per_student ON room_allocation (pending_student_id)',
+  'CREATE UNIQUE INDEX uq_ra_single_pending_per_student ON room_allocation ((CASE WHEN status=''Pending'' THEN student_id ELSE NULL END))',
   'SELECT ''uq_ra_single_pending_per_student already exists'''
 );
 PREPARE stmt FROM @sql;

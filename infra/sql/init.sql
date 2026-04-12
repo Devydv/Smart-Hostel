@@ -61,12 +61,10 @@ CREATE TABLE IF NOT EXISTS room_allocation (
   room_id INT NOT NULL,
   status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
   allocated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  approved_student_id INT GENERATED ALWAYS AS (CASE WHEN status='Approved' THEN student_id ELSE NULL END) STORED,
-  pending_student_id INT GENERATED ALWAYS AS (CASE WHEN status='Pending' THEN student_id ELSE NULL END) STORED,
   INDEX idx_ra_room_status (room_id, status),
   INDEX idx_ra_student_status (student_id, status),
-  UNIQUE KEY uq_ra_single_approved_per_student (approved_student_id),
-  UNIQUE KEY uq_ra_single_pending_per_student (pending_student_id),
+  UNIQUE KEY uq_ra_single_approved_per_student ((CASE WHEN status='Approved' THEN student_id ELSE NULL END)),
+  UNIQUE KEY uq_ra_single_pending_per_student ((CASE WHEN status='Pending' THEN student_id ELSE NULL END)),
   CONSTRAINT fk_ra_student FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
   CONSTRAINT fk_ra_room FOREIGN KEY (room_id) REFERENCES rooms(room_id) ON DELETE CASCADE
 );
