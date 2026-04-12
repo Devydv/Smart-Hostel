@@ -57,6 +57,14 @@ jobs:
       - name: Test
         run: pytest -q
 
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.31.0"
+
+      - name: Validate Kubernetes manifests (client dry-run)
+        run: kubectl apply --dry-run=client -f infra/k8s
+
       - name: Docker build
         run: docker build -t smart-hostel:${{ github.sha }} .
 
