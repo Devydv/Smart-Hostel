@@ -13,6 +13,10 @@ concurrency:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   ci:
     name: Lint, Test, Build
@@ -73,6 +77,17 @@ jobs:
 
       - name: Docker build
         run: docker build -t smart-hostel:${{ github.sha }} .
+
+      - name: Publish web image to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/smart-hoste-web
+        run: |
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker tag smart-hostel:${{ github.sha }} ${IMAGE_NAME}:${{ github.sha }}
+          docker tag smart-hostel:${{ github.sha }} ${IMAGE_NAME}:latest
+          docker push ${IMAGE_NAME}:${{ github.sha }}
+          docker push ${IMAGE_NAME}:latest
 
   cd:
     name: Deploy To EC2
@@ -140,11 +155,15 @@ jobs:
 
       - name: Deploy with Ansible
         if: steps.secrets.outputs.ready == 'true'
+        env:
+          WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/smart-hoste-web:${{ github.sha }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ github.token }}
         run: |
-          for attempt in 1 2 3; do
+          for attempt in 1 2; do
             echo "Ansible deploy attempt ${attempt}..."
-            if timeout 45m ansible-playbook -i /tmp/inventory.ini infra/ansible/deploy.yml \
-              --extra-vars "repo_url=https://github.com/${{ github.repository }}.git repo_branch=main app_dir=/opt/smart_hostel install_packages=false enable_observability=false"; then
+            if timeout 25m ansible-playbook -i /tmp/inventory.ini infra/ansible/deploy.yml \
+              --extra-vars "repo_url=https://github.com/${{ github.repository }}.git repo_branch=main app_dir=/opt/smart_hostel install_packages=false enable_observability=false web_image=${WEB_IMAGE} ghcr_username=${GHCR_USER} ghcr_token=${GHCR_TOKEN}"; then
               exit 0
             fi
             echo "Deploy attempt ${attempt} failed, retrying in 20s..."

@@ -10,6 +10,9 @@
     repo_branch: main
     install_packages: false
     enable_observability: true
+    web_image: ""
+    ghcr_username: ""
+    ghcr_token: ""
 
   tasks:
     - name: Install required system packages
@@ -48,6 +51,31 @@
         version: "{{ repo_branch }}"
         force: true
 
+    - name: Login to GHCR for private image pulls
+      when:
+        - web_image | length > 0
+        - ghcr_username | length > 0
+        - ghcr_token | length > 0
+      shell: |
+        echo "{{ ghcr_token }}" | docker login ghcr.io -u "{{ ghcr_username }}" --password-stdin
+      no_log: true
+
+    - name: Create compose override for prebuilt web image
+      when: web_image | length > 0
+      copy:
+        dest: "{{ app_dir }}/docker-compose.deploy.yml"
+        mode: "0644"
+        content: |
+          services:
+            web:
+              image: {{ web_image }}
+
+    - name: Remove compose override when using source build
+      when: web_image | length == 0
+      file:
+        path: "{{ app_dir }}/docker-compose.deploy.yml"
+        state: absent
+
     - name: Validate compose configuration (best effort parity guard)
       shell: |
         if docker compose version >/dev/null 2>&1; then
@@ -65,13 +93,27 @@
       shell: |
         for attempt in 1 2 3; do
           if docker compose version >/dev/null 2>&1; then
-            if timeout 20m docker compose up -d --build web; then
-              exit 0
+            if [ -n "{{ web_image }}" ]; then
+              if timeout 15m docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull web && \
+                 timeout 15m docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --no-build web; then
+                exit 0
+              fi
+            else
+              if timeout 20m docker compose up -d --build web; then
+                exit 0
+              fi
             fi
           else
-            docker-compose rm -sf web mysql || true
-            if timeout 20m docker-compose up -d --build --force-recreate mysql web; then
-              exit 0
+            if [ -n "{{ web_image }}" ]; then
+              if timeout 15m docker-compose -f docker-compose.yml -f docker-compose.deploy.yml pull web && \
+                 timeout 15m docker-compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --no-build web; then
+                exit 0
+              fi
+            else
+              docker-compose rm -sf web mysql || true
+              if timeout 20m docker-compose up -d --build --force-recreate mysql web; then
+                exit 0
+              fi
             fi
           fi
           echo "Web container build/start failed on attempt ${attempt}, retrying in 20s..."
@@ -81,6 +123,7 @@
       environment:
         COMPOSE_HTTP_TIMEOUT: "600"
         DOCKER_CLIENT_TIMEOUT: "600"
+        COMPOSE_PARALLEL_LIMIT: "1"
       args:
         chdir: "{{ app_dir }}"
 
