@@ -213,10 +213,10 @@ window.onclick = function(event) {
       {% for o in orders %}
       <div class="order-item">
         <div>
-          <div class="order-detail">{{ o.details[:60] }}{% if o.details|length > 60 %}...{% endif %}</div>
-          <div class="order-meta">{{ o.vendor }} &middot; {{ o.created_at }}</div>
+          <div class="order-detail">{{ o.order_details[:60] }}{% if o.order_details|length > 60 %}...{% endif %}</div>
+          <div class="order-meta">Partner {{ o.partner_id }} &middot; {{ o.created_at.strftime('%b %d, %Y %I:%M %p') if o.created_at else '—' }}</div>
         </div>
-        <span class="badge {{ 'badge-green' if o.status == 'Delivered' else 'badge-yellow' }}">{{ o.status }}</span>
+        <span class="badge {{ 'badge-green' if o.order_status == 'Delivered' else 'badge-yellow' }}">{{ o.order_status }}</span>
       </div>
       {% else %}
       <p style="color:var(--gray-400);font-size:.875rem;">No orders placed yet.</p>

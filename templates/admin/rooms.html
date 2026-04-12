@@ -27,15 +27,20 @@
     .brand-name { font-size:1.25rem;font-weight:700;color:var(--gray-900); }
     .brand-sub  { font-size:.72rem;color:var(--gray-500); }
     .brand-icon { color:var(--purple-600);width:28px;height:28px; }
+    .header-right { display:flex;align-items:center;gap:.75rem; }
     .nav-links { display:flex;gap:.5rem; }
     .nav-link { padding:.45rem .875rem;border:1px solid var(--gray-200);border-radius:var(--radius);background:white;color:var(--gray-600);font-size:.8rem;font-weight:500;text-decoration:none;transition:all .15s; }
     .nav-link:hover { background:var(--gray-50); }
     .nav-link.active { background:var(--gray-900);color:white;border-color:var(--gray-900); }
+    .btn-logout { display:flex;align-items:center;gap:.375rem;padding:.45rem .875rem;border:1px solid var(--gray-200);border-radius:var(--radius);background:white;color:var(--gray-600);font-size:.8rem;font-weight:500;text-decoration:none;transition:all .15s; }
+    .btn-logout svg { width:14px;height:14px; }
+    .btn-logout:hover { background:var(--gray-50); }
     .main { max-width:1100px;margin:0 auto;padding:1.75rem 1.5rem; }
     .page-title { font-size:1.4rem;font-weight:700;color:var(--gray-900); }
     .page-sub { font-size:.875rem;color:var(--gray-500);margin-top:.25rem;margin-bottom:1.5rem; }
     .alert { padding:.75rem 1rem;border-radius:var(--radius);font-size:.875rem;margin-bottom:1rem; }
     .alert-success { background:var(--green-100);color:var(--green-700); }
+    .alert-warning { background:var(--yellow-100);color:var(--yellow-700); }
     .two-col { display:grid;grid-template-columns:1fr;gap:1.5rem; }
     @media(min-width:1024px) { .two-col { grid-template-columns:380px 1fr; } }
     .card { background:white;border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden; }
@@ -49,6 +54,10 @@
     .btn { display:inline-flex;align-items:center;padding:.55rem 1.25rem;border-radius:var(--radius);font-size:.875rem;font-weight:500;font-family:inherit;cursor:pointer;border:none;transition:all .15s; }
     .btn-primary { background:var(--blue-600);color:white; }
     .btn-primary:hover { background:var(--blue-700); }
+    .btn-danger { background:var(--red-600);color:white; }
+    .btn-danger:hover { background:var(--red-700); }
+    .btn-xs { padding:.35rem .7rem;font-size:.78rem; }
+    .action-form { display:inline; }
     .table-wrap { overflow-x:auto; }
     table { width:100%;border-collapse:collapse;font-size:.85rem; }
     thead tr { border-bottom:1px solid var(--gray-200); }
@@ -70,12 +79,18 @@
       <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <div><div class="brand-name">SmartHostel</div><div class="brand-sub">Admin Portal</div></div>
     </div>
-    <div class="nav-links">
-      <a class="nav-link" href="{{ url_for('admin_dashboard') }}">Dashboard</a>
-      <a class="nav-link active" href="{{ url_for('admin_rooms') }}">Rooms</a>
-      <a class="nav-link" href="{{ url_for('admin_students') }}">Students</a>
-      <a class="nav-link" href="{{ url_for('admin_reports') }}">Reports</a>
-      <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+    <div class="header-right">
+      <div class="nav-links">
+        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+        <a class="nav-link active" href="{{ url_for('admin_rooms') }}">Rooms</a>
+        <a class="nav-link" href="{{ url_for('admin_students') }}">Students</a>
+        <a class="nav-link" href="{{ url_for('admin_complaints') }}">Complaints</a>
+        <a class="nav-link" href="{{ url_for('admin_reports') }}">Reports</a>
+      </div>
+      <a class="btn-logout" href="{{ url_for('logout') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Logout
+      </a>
     </div>
   </div>
 </header>
@@ -92,6 +107,7 @@
       <div class="card-header"><div class="card-title">Add New Room</div></div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('admin_rooms') }}">
+          <input type="hidden" name="action" value="add">
           <div class="form-group">
             <label>Room Number</label>
             <input class="form-control" name="room_number" placeholder="e.g. A101" required>
@@ -120,7 +136,7 @@
       <div class="card-body">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Room No</th><th>Type</th><th>Capacity</th><th>Block</th><th>Status</th></tr></thead>
+            <thead><tr><th>Room No</th><th>Type</th><th>Capacity</th><th>Block</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               {% for r in rooms %}
               <tr>
@@ -129,9 +145,16 @@
                 <td>{{ r.capacity }}</td>
                 <td>{{ r.block | default('—') }}</td>
                 <td><span class="badge {{ 'badge-green' if r.status == 'Available' else 'badge-red' }}">{{ r.status }}</span></td>
+                <td>
+                  <form class="action-form" method="POST" action="{{ url_for('admin_rooms') }}">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="room_id" value="{{ r.room_id }}">
+                    <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Remove room {{ r.room_number }}? This will fail if active/pending allocations exist.')">Remove</button>
+                  </form>
+                </td>
               </tr>
               {% else %}
-              <tr><td colspan="5" style="text-align:center;color:var(--gray-400)">No rooms found.</td></tr>
+              <tr><td colspan="6" style="text-align:center;color:var(--gray-400)">No rooms found.</td></tr>
               {% endfor %}
             </tbody>
           </table>

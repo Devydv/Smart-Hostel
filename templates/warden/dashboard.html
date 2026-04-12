@@ -99,7 +99,7 @@
         <a class="nav-link" href="{{ url_for('warden_complaints') }}">Complaints</a>
         <a class="nav-link" href="{{ url_for('warden_announcements') }}">Announcements</a>
       </div>
-      <a class="btn-logout" href="/logout">
+      <a class="btn-logout" href="{{ url_for('logout') }}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         Logout
       </a>
@@ -207,7 +207,28 @@
           </table>
         </div>
         {% else %}
-        <p class="empty-state">No complaints yet.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Student</th><th>Title</th><th>Room</th><th>Date</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Demo Student</td>
+                <td>Fan not working</td>
+                <td>A-101</td>
+                <td>Apr 11, 2026</td>
+                <td><span class="badge badge-yellow">Pending</span></td>
+              </tr>
+              <tr>
+                <td>Sample User</td>
+                <td>Wi-Fi connectivity issue</td>
+                <td>B-203</td>
+                <td>Apr 10, 2026</td>
+                <td><span class="badge badge-green">Resolved</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="empty-state" style="padding:1rem 0 0;">Showing demo complaints because no live complaints are available.</p>
         {% endif %}
         <div style="margin-top:1rem;text-align:right"><a class="btn-sm" href="{{ url_for('warden_complaints') }}">Manage Complaints →</a></div>
       </div>
@@ -242,7 +263,28 @@
             </tbody>
           </table>
         </div>
-        {% else %}<p class="empty-state">No rooms found.</p>{% endif %}
+        {% else %}
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Room No.</th><th>Capacity</th><th>Occupied</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:500">A-101</td>
+                <td>2</td>
+                <td>1</td>
+                <td><span class="room-dot dot-available"></span>Available</td>
+              </tr>
+              <tr>
+                <td style="font-weight:500">B-204</td>
+                <td>3</td>
+                <td>3</td>
+                <td><span class="room-dot dot-full"></span>Occupied</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="empty-state" style="padding:1rem 0 0;">Showing demo room data because no live room records were returned.</p>
+        {% endif %}
         <div style="margin-top:1rem;text-align:right"><a class="btn-sm" href="{{ url_for('warden_room_approval') }}">Pending Approvals →</a></div>
       </div>
     </div>
@@ -285,7 +327,28 @@
             </tbody>
           </table>
         </div>
-        {% else %}<p class="empty-state">No students found.</p>{% endif %}
+        {% else %}
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Name</th><th>Room</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr>
+                <td style="color:var(--gray-500)">1</td>
+                <td style="font-weight:500">Demo Student 1</td>
+                <td>A-101</td>
+                <td><span class="badge badge-green">Active</span></td>
+              </tr>
+              <tr>
+                <td style="color:var(--gray-500)">2</td>
+                <td style="font-weight:500">Demo Student 2</td>
+                <td>B-204</td>
+                <td><span class="badge badge-green">Active</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="empty-state" style="padding:1rem 0 0;">Showing demo students because no live students are available.</p>
+        {% endif %}
       </div>
     </div>
   </div>

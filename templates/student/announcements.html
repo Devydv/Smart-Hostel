@@ -193,14 +193,15 @@ window.onclick = function(event) {
       {% if announcements %}
         {% for a in announcements %}
         <div class="announcement-item">
+          {% set category = a.category | default('General') %}
           <div class="announcement-top">
             <div class="announcement-title">{{ a.title }}</div>
             <span class="badge
-              {% if a.category == 'General' %}badge-blue
-              {% elif a.category == 'Maintenance' %}badge-yellow
-              {% elif a.category == 'Event' %}badge-green
+              {% if category == 'General' %}badge-blue
+              {% elif category == 'Maintenance' %}badge-yellow
+              {% elif category == 'Event' %}badge-green
               {% else %}badge-red{% endif %}">
-              {{ a.category | default('General') }}
+              {{ category }}
             </span>
           </div>
           <div class="announcement-body">{{ a.message }}</div>

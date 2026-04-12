@@ -27,10 +27,14 @@
     .brand-name { font-size:1.25rem;font-weight:700;color:var(--gray-900); }
     .brand-sub  { font-size:.72rem;color:var(--gray-500); }
     .brand-icon { color:var(--purple-600);width:28px;height:28px; }
+    .header-right { display:flex;align-items:center;gap:.75rem; }
     .nav-links { display:flex;gap:.5rem; }
     .nav-link { padding:.45rem .875rem;border:1px solid var(--gray-200);border-radius:var(--radius);background:white;color:var(--gray-600);font-size:.8rem;font-weight:500;text-decoration:none;transition:all .15s; }
     .nav-link:hover { background:var(--gray-50); }
     .nav-link.active { background:var(--gray-900);color:white;border-color:var(--gray-900); }
+    .btn-logout { display:flex;align-items:center;gap:.375rem;padding:.45rem .875rem;border:1px solid var(--gray-200);border-radius:var(--radius);background:white;color:var(--gray-600);font-size:.8rem;font-weight:500;text-decoration:none;transition:all .15s; }
+    .btn-logout svg { width:14px;height:14px; }
+    .btn-logout:hover { background:var(--gray-50); }
     .main { max-width:1100px;margin:0 auto;padding:1.75rem 1.5rem; }
     .page-title { font-size:1.4rem;font-weight:700;color:var(--gray-900); }
     .page-sub { font-size:.875rem;color:var(--gray-500);margin-top:.25rem;margin-bottom:1.5rem; }
@@ -57,12 +61,18 @@
       <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <div><div class="brand-name">SmartHostel</div><div class="brand-sub">Admin Portal</div></div>
     </div>
-    <div class="nav-links">
-      <a class="nav-link" href="{{ url_for('admin_dashboard') }}">Dashboard</a>
-      <a class="nav-link" href="{{ url_for('admin_rooms') }}">Rooms</a>
-      <a class="nav-link" href="{{ url_for('admin_students') }}">Students</a>
-      <a class="nav-link active" href="{{ url_for('admin_reports') }}">Reports</a>
-      <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+    <div class="header-right">
+      <div class="nav-links">
+        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+        <a class="nav-link" href="{{ url_for('admin_rooms') }}">Rooms</a>
+        <a class="nav-link" href="{{ url_for('admin_students') }}">Students</a>
+        <a class="nav-link" href="{{ url_for('admin_complaints') }}">Complaints</a>
+        <a class="nav-link active" href="{{ url_for('admin_reports') }}">Reports</a>
+      </div>
+      <a class="btn-logout" href="{{ url_for('logout') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Logout
+      </a>
     </div>
   </div>
 </header>

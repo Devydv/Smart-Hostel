@@ -89,25 +89,6 @@
     .reg-item { display:flex;align-items:center;justify-content:space-between;padding:.75rem;background:var(--gray-50);border-radius:var(--radius);margin-bottom:.5rem; }
     .reg-name { font-size:.875rem;font-weight:500; }
     .reg-meta { font-size:.72rem;color:var(--gray-400); }
-    <h3>Block-wise Occupancy</h3>
-
-<table border="1" cellpadding="10">
-    <tr>
-        <th>Block</th>
-        <th>Total Rooms</th>
-        <th>Occupied</th>
-        <th>Occupancy Rate</th>
-    </tr>
-
-    {% for b in block_occupancy %}
-    <tr>
-        <td>{{ b.block }}</td>
-        <td>{{ b.total }}</td>
-        <td>{{ b.occupied }}</td>
-        <td>{{ b.rate }}%</td>
-    </tr>
-    {% endfor %}
-</table>
   </style>
 </head>
 <body>
@@ -129,7 +110,7 @@
         <a class="nav-link" href="{{ url_for('admin_complaints') }}">Complaints</a>
         <a class="nav-link" href="{{ url_for('admin_reports') }}">Reports</a>
       </div>
-      <a class="btn-logout" href="/logout">
+      <a class="btn-logout" href="{{ url_for('logout') }}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         Logout
       </a>
@@ -209,9 +190,21 @@
           <div class="card-desc">New user accounts</div>
         </div>
         <div class="card-body">
-          <div class="reg-item"><div><div class="reg-name">Anjali Verma</div><div class="reg-meta">STU156 • Mar 12, 2026</div></div><span class="badge badge-green">Approved</span></div>
-          <div class="reg-item"><div><div class="reg-name">Rohan Singh</div><div class="reg-meta">STU155 • Mar 11, 2026</div></div><span class="badge badge-green">Approved</span></div>
-          <div class="reg-item"><div><div class="reg-name">Kavya Nair</div><div class="reg-meta">STU154 • Mar 10, 2026</div></div><span class="badge badge-yellow">Pending</span></div>
+          {% if recent_registrations %}
+            {% for r in recent_registrations %}
+            <div class="reg-item">
+              <div>
+                <div class="reg-name">{{ r.name }}</div>
+                <div class="reg-meta">{{ r.roll_no or ('STU' ~ r.student_id) }} • ID {{ r.student_id }}</div>
+              </div>
+              <span class="badge {{ 'badge-green' if r.registration_status == 'Approved' else 'badge-yellow' }}">{{ r.registration_status }}</span>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="reg-item"><div><div class="reg-name">Anjali Verma</div><div class="reg-meta">STU156 • Demo Row</div></div><span class="badge badge-green">Approved</span></div>
+            <div class="reg-item"><div><div class="reg-name">Rohan Singh</div><div class="reg-meta">STU155 • Demo Row</div></div><span class="badge badge-green">Approved</span></div>
+            <div class="reg-item"><div><div class="reg-name">Kavya Nair</div><div class="reg-meta">STU154 • Demo Row</div></div><span class="badge badge-yellow">Pending</span></div>
+          {% endif %}
         </div>
       </div>
       <div class="card">
@@ -268,7 +261,32 @@
           </table>
         </div>
         {% else %}
-        <div class="empty-state">No escalated complaints. All clear! ✓</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Student</th><th>Title</th><th>Description</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr>
+                <td style="color:var(--gray-400);font-size:.75rem">#D101</td>
+                <td style="font-weight:500">Demo Student</td>
+                <td>Mess quality feedback</td>
+                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Sample escalated issue shown when there is no live data.</td>
+                <td>Apr 10, 2026</td>
+                <td><span class="badge badge-red">Escalated</span></td>
+                <td><span style="color:var(--gray-400);font-size:.78rem">Demo</span></td>
+              </tr>
+              <tr>
+                <td style="color:var(--gray-400);font-size:.75rem">#D102</td>
+                <td style="font-weight:500">Sample User</td>
+                <td>Water pressure issue</td>
+                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Fallback preview row for the complaints tab.</td>
+                <td>Apr 09, 2026</td>
+                <td><span class="badge badge-yellow">Pending</span></td>
+                <td><span style="color:var(--gray-400);font-size:.78rem">Demo</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="empty-state" style="padding:1rem 0 0;">Showing demo data because there are no escalated complaints yet.</div>
         {% endif %}
         <div style="margin-top:1rem;text-align:right"><a class="btn-sm" href="{{ url_for('admin_complaints') }}">View All Complaints →</a></div>
       </div>
@@ -296,11 +314,27 @@
                 <td><span class="badge badge-green">Active</span></td>
               </tr>
               {% else %}
-              <tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:2rem">No wardens registered yet.</td></tr>
+              <tr>
+                <td style="color:var(--gray-500)">WAR001</td>
+                <td style="font-weight:500">Demo Warden A</td>
+                <td>warden-a@smarthostel.com</td>
+                <td>Hostel Warden</td>
+                <td><span class="badge badge-green">Demo</span></td>
+              </tr>
+              <tr>
+                <td style="color:var(--gray-500)">WAR002</td>
+                <td style="font-weight:500">Demo Warden B</td>
+                <td>warden-b@smarthostel.com</td>
+                <td>Assistant Warden</td>
+                <td><span class="badge badge-green">Demo</span></td>
+              </tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
+        {% if not wardens %}
+        <div class="empty-state" style="padding:1rem 0 0;">Showing demo data because no wardens are registered yet.</div>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -317,9 +351,25 @@
           <table>
             <thead><tr><th>Student ID</th><th>Name</th><th>Room</th><th>Amount</th><th>Due Date</th><th>Overdue</th><th>Action</th></tr></thead>
             <tbody>
-              <tr><td style="color:var(--gray-500)">STU045</td><td>Amit Sharma</td><td>A-305</td><td style="font-weight:500">₹15,000</td><td>Mar 10, 2026</td><td style="color:#b91c1c;font-weight:500">2 days</td><td><button class="btn-sm">Send Reminder</button></td></tr>
-              <tr><td style="color:var(--gray-500)">STU078</td><td>Neha Gupta</td><td>B-201</td><td style="font-weight:500">₹15,000</td><td>Mar 15, 2026</td><td style="color:var(--green-600)">On time</td><td><button class="btn-sm">Send Reminder</button></td></tr>
-              <tr><td style="color:var(--gray-500)">STU092</td><td>Vikram Rao</td><td>C-405</td><td style="font-weight:500">₹15,000</td><td>Mar 8, 2026</td><td style="color:#b91c1c;font-weight:500">4 days</td><td><button class="btn-sm">Send Reminder</button></td></tr>
+              {% if pending_fee_rows %}
+                {% for p in pending_fee_rows %}
+                <tr>
+                  <td style="color:var(--gray-500)">{{ p.roll_no }}</td>
+                  <td>{{ p.name }}</td>
+                  <td>{{ p.room_number or '—' }}</td>
+                  <td style="font-weight:500">₹{{ p.amount }}</td>
+                  <td>{{ p.due_date.strftime('%b %d, %Y') if p.due_date else '—' }}</td>
+                  <td style="color:{{ '#b91c1c;font-weight:500' if p.overdue_days and p.overdue_days > 0 else 'var(--green-600)' }}">
+                    {{ (p.overdue_days ~ ' days') if p.overdue_days and p.overdue_days > 0 else 'On time' }}
+                  </td>
+                  <td><button class="btn-sm">Send Reminder</button></td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td style="color:var(--gray-500)">STU045</td><td>Amit Sharma</td><td>A-305</td><td style="font-weight:500">₹15,000</td><td>Mar 10, 2026</td><td style="color:#b91c1c;font-weight:500">2 days</td><td><button class="btn-sm">Send Reminder</button></td></tr>
+                <tr><td style="color:var(--gray-500)">STU078</td><td>Neha Gupta</td><td>B-201</td><td style="font-weight:500">₹15,000</td><td>Mar 15, 2026</td><td style="color:var(--green-600)">On time</td><td><button class="btn-sm">Send Reminder</button></td></tr>
+                <tr><td style="color:var(--gray-500)">STU092</td><td>Vikram Rao</td><td>C-405</td><td style="font-weight:500">₹15,000</td><td>Mar 8, 2026</td><td style="color:#b91c1c;font-weight:500">4 days</td><td><button class="btn-sm">Send Reminder</button></td></tr>
+              {% endif %}
             </tbody>
           </table>
         </div>

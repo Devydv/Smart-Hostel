@@ -691,14 +691,19 @@ def warden_complaints():
         action = request.form.get("action")
         if action == "resolve":
             cursor.execute("UPDATE complaints SET status='Resolved' WHERE complaint_id=%s", (cid,))
+            conn.commit()
+            message = ("success", "Complaint resolved successfully.")
         elif action == "escalate":
             cursor.execute("UPDATE complaints SET status='Escalated', level='Admin' WHERE complaint_id=%s", (cid,))
-        conn.commit()
-        message = ("success", f"Complaint {action}d successfully.")
+            conn.commit()
+            message = ("success", "Complaint escalated successfully.")
+        else:
+            message = ("warning", "Invalid action requested.")
     cursor.execute("""
         SELECT c.*, s.name AS student_name FROM complaints c
         JOIN students s ON c.student_id=s.student_id
-        WHERE c.level='Warden' ORDER BY c.created_at DESC""")
+        WHERE c.level='Warden' AND c.status='Pending'
+        ORDER BY c.created_at DESC""")
     complaints = cursor.fetchall()
     cursor.close(); conn.close()
     return render_template("warden/complaints.html", complaints=complaints, message=message)
@@ -803,19 +808,42 @@ def warden_announcements():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    message= None
+    message = None
 
     if request.method == "POST":
-        title = request.form["title"]
-        message = request.form["content"]
+        action = request.form.get("action", "create")
 
-        cursor.execute("""
-            INSERT INTO announcements (title, message)
-            VALUES (%s, %s)
-        """, (title, message))
+        if action == "delete":
+            announcement_id = request.form.get("announcement_id", "").strip()
+            if not announcement_id.isdigit():
+                message = ("error", "Invalid announcement selected.")
+            else:
+                cursor.execute(
+                    "DELETE FROM announcements WHERE announcement_id=%s",
+                    (int(announcement_id),),
+                )
+                conn.commit()
+                if cursor.rowcount:
+                    message = ("success", "Announcement deleted")
+                else:
+                    message = ("error", "Announcement not found.")
+        else:
+            title = request.form.get("title", "").strip()
+            content = request.form.get("content", "").strip()
 
-        conn.commit()
-        message = ("success", "Announcement posted")
+            if not title or not content:
+                message = ("error", "Title and message are required.")
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO announcements (title, message)
+                    VALUES (%s, %s)
+                    """,
+                    (title, content),
+                )
+
+                conn.commit()
+                message = ("success", "Announcement posted")
 
     # Fetch all announcements
     cursor.execute("""
@@ -888,6 +916,64 @@ def admin_dashboard():
         escalated_list = cursor.fetchall()
     except Exception: pass
 
+    recent_registrations = []
+    try:
+        cursor.execute(
+            """
+            SELECT
+                s.student_id,
+                s.roll_no,
+                s.name,
+                CASE
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM room_allocation ra
+                        WHERE ra.student_id = s.student_id AND ra.status = 'Approved'
+                    ) THEN 'Approved'
+                    ELSE 'Pending'
+                END AS registration_status
+            FROM students s
+            ORDER BY s.student_id DESC
+            LIMIT 3
+            """
+        )
+        recent_registrations = cursor.fetchall()
+    except Exception:
+        recent_registrations = []
+
+    pending_fee_rows = []
+    try:
+        cursor.execute(
+            """
+            SELECT
+                COALESCE(s.roll_no, CONCAT('STU', s.student_id)) AS roll_no,
+                s.name,
+                r.room_number,
+                f.amount,
+                f.due_date,
+                DATEDIFF(CURDATE(), f.due_date) AS overdue_days
+            FROM fees f
+            JOIN students s ON s.student_id = f.student_id
+            LEFT JOIN (
+                SELECT ra.student_id, ra.room_id
+                FROM room_allocation ra
+                WHERE ra.status='Approved'
+                  AND ra.allocation_id = (
+                    SELECT MAX(ra2.allocation_id)
+                    FROM room_allocation ra2
+                    WHERE ra2.student_id = ra.student_id AND ra2.status='Approved'
+                  )
+            ) lr ON lr.student_id = s.student_id
+            LEFT JOIN rooms r ON r.room_id = lr.room_id
+            WHERE f.payment_status='Pending'
+            ORDER BY f.due_date ASC
+            LIMIT 5
+            """
+        )
+        pending_fee_rows = cursor.fetchall()
+    except Exception:
+        pending_fee_rows = []
+
     cursor.execute("SELECT w.name, w.designation, u.username FROM wardens w JOIN users u ON u.linked_warden_id=w.warden_id")
     wardens = cursor.fetchall()
     cursor.close(); conn.close()
@@ -904,7 +990,9 @@ def admin_dashboard():
         resolved_complaints=resolved_complaints,
         escalated_complaints=escalated_complaints,
         escalated_list=escalated_list,
-        wardens=wardens)
+        wardens=wardens,
+        recent_registrations=recent_registrations,
+        pending_fee_rows=pending_fee_rows)
 
 
 @app.route("/admin/complaints", methods=["GET", "POST"])
@@ -948,18 +1036,71 @@ def admin_rooms():
     message = None
 
     if request.method == "POST":
-        cursor.execute("""
-            INSERT INTO rooms (room_number, room_type, capacity, block, status)
-            VALUES (%s, %s, %s, %s, 'Available')
-        """, (
-            request.form["room_number"],
-            request.form["room_type"],
-            request.form["capacity"],
-            request.form["block"]
-        ))
-        conn.commit()
+        action = request.form.get("action", "add")
 
-        message = ("success", "Room added successfully")
+        try:
+            if action == "delete":
+                room_id = request.form.get("room_id", "").strip()
+                if not room_id.isdigit():
+                    message = ("warning", "Invalid room selected.")
+                else:
+                    room_id = int(room_id)
+                    cursor.execute(
+                        "SELECT COUNT(*) AS c FROM room_allocation WHERE room_id=%s AND status='Approved'",
+                        (room_id,),
+                    )
+                    approved_count = cursor.fetchone()["c"]
+
+                    cursor.execute(
+                        "SELECT COUNT(*) AS c FROM room_allocation WHERE room_id=%s AND status='Pending'",
+                        (room_id,),
+                    )
+                    pending_count = cursor.fetchone()["c"]
+
+                    if approved_count > 0:
+                        message = ("warning", "Cannot remove room with approved allocations.")
+                    elif pending_count > 0:
+                        message = ("warning", "Cannot remove room with pending requests.")
+                    else:
+                        cursor.execute("DELETE FROM rooms WHERE room_id=%s", (room_id,))
+                        conn.commit()
+                        if cursor.rowcount:
+                            message = ("success", "Room removed successfully")
+                        else:
+                            message = ("warning", "Room not found.")
+            elif action == "add":
+                room_number = request.form.get("room_number", "").strip()
+                room_type = request.form.get("room_type", "").strip()
+                capacity_raw = request.form.get("capacity", "").strip()
+                block = request.form.get("block", "").strip()
+
+                if not room_number or not capacity_raw.isdigit():
+                    message = ("warning", "Room number and valid capacity are required.")
+                else:
+                    capacity = int(capacity_raw)
+                    if capacity < 1 or capacity > 6:
+                        message = ("warning", "Capacity must be between 1 and 6.")
+                    else:
+                        cursor.execute("SELECT room_id FROM rooms WHERE room_number=%s", (room_number,))
+                        existing_room = cursor.fetchone()
+
+                        if existing_room:
+                            message = ("warning", "Room number already exists.")
+                        else:
+                            cursor.execute(
+                                """
+                                INSERT INTO rooms (room_number, room_type, capacity, block, status)
+                                VALUES (%s, %s, %s, %s, 'Available')
+                                """,
+                                (room_number, room_type, capacity, block),
+                            )
+                            conn.commit()
+                            message = ("success", "Room added successfully")
+            else:
+                message = ("warning", "Invalid action requested.")
+        except Exception:
+            conn.rollback()
+            message = ("warning", "Room operation failed. Please try again.")
 
     cursor.execute("SELECT * FROM rooms ORDER BY room_number")
     rooms = cursor.fetchall()
@@ -970,13 +1111,51 @@ def admin_rooms():
     return render_template("admin/rooms.html", rooms=rooms, message=message)
 
 
-@app.route("/admin/students")
+@app.route("/admin/students", methods=["GET", "POST"])
 def admin_students():
     if not login_required("ADMIN"):
         return redirect(url_for("login"))
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
+
+    message = None
+
+    if request.method == "POST":
+        action = request.form.get("action", "")
+
+        if action == "delete":
+            student_id = request.form.get("student_id", "").strip()
+            if not student_id.isdigit():
+                message = ("warning", "Invalid student selected.")
+            else:
+                student_id = int(student_id)
+                try:
+                    cursor.execute("SELECT student_id FROM students WHERE student_id=%s", (student_id,))
+                    student_exists = cursor.fetchone()
+
+                    if not student_exists:
+                        message = ("warning", "Student not found.")
+                    else:
+                        cursor.execute(
+                            "SELECT DISTINCT room_id FROM room_allocation WHERE student_id=%s",
+                            (student_id,),
+                        )
+                        affected_rooms = [row["room_id"] for row in cursor.fetchall() if row["room_id"]]
+
+                        cursor.execute("DELETE FROM users WHERE linked_student_id=%s", (student_id,))
+                        cursor.execute("DELETE FROM students WHERE student_id=%s", (student_id,))
+
+                        for room_id in affected_rooms:
+                            sync_room_status(cursor, room_id)
+
+                        conn.commit()
+                        message = ("success", "Student removed successfully")
+                except Exception:
+                    conn.rollback()
+                    message = ("warning", "Failed to remove student. Please try again.")
+        else:
+            message = ("warning", "Invalid action requested.")
 
     cursor.execute("""
         SELECT s.*, r.room_number
@@ -1001,7 +1180,7 @@ def admin_students():
     cursor.close()
     conn.close()
 
-    return render_template("admin/students.html", students=students)
+    return render_template("admin/students.html", students=students, message=message)
 
 
 @app.route("/admin/reports")
