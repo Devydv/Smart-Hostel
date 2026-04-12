@@ -157,7 +157,7 @@ jobs:
         if: steps.secrets.outputs.ready == 'true'
         run: |
           for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if curl --fail --max-time 10 "http://${{ secrets.EC2_HOST }}:5000/debug/db" > /dev/null && \
+            if curl --fail --max-time 10 "http://${{ secrets.EC2_HOST }}:5000/health" > /dev/null && \
                curl --fail --max-time 10 "http://${{ secrets.EC2_HOST }}:5000/metrics" > /dev/null; then
               echo "Health check passed on attempt ${attempt}."
               exit 0
