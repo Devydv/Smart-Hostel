@@ -268,10 +268,9 @@ def student_dashboard():
                 JOIN students s ON s.student_id = ra.student_id
                 WHERE ra.room_id = %s
                   AND ra.status = 'Approved'
-                  AND ra.student_id <> %s
                 ORDER BY s.name
                 """,
-                (room["room_id"], student_id),
+                                (room["room_id"],),
             )
             roommates = cursor.fetchall()
     except Exception: pass

@@ -322,21 +322,21 @@ window.onclick = function(event) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           Room Details
         </div>
-        <div class="card-desc">Your current room and roommates</div>
+        <div class="card-desc">All students currently assigned to your room</div>
       </div>
       <div class="card-body">
-        <p style="font-size:0.78rem;font-weight:500;color:var(--gray-500);margin-bottom:0.5rem;">Roommates</p>
+        <p style="font-size:0.78rem;font-weight:500;color:var(--gray-500);margin-bottom:0.5rem;">Room Occupants</p>
         {% if room and roommates %}
           {% for mate in roommates %}
           <div class="roommate-item">
             <div class="roommate-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-            <span class="roommate-name">{{ mate.name }}</span>
+            <span class="roommate-name">{{ mate.name }}{% if mate.student_id == student.student_id %} (You){% endif %}</span>
           </div>
           {% endfor %}
         {% elif room %}
           <div class="roommate-item">
             <div class="roommate-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-            <span class="roommate-name">No roommates assigned yet</span>
+            <span class="roommate-name">No students assigned yet</span>
           </div>
         {% else %}
           <div class="roommate-item">
