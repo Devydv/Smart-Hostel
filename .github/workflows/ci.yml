@@ -122,7 +122,7 @@ jobs:
         run: |
           cat > /tmp/inventory.ini <<'EOF'
           [app]
-          app-server ansible_host=${{ secrets.EC2_HOST }} ansible_user=${{ secrets.EC2_USER }} ansible_ssh_private_key_file=/tmp/deploy_key.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ConnectionAttempts=6 -o ServerAliveInterval=15 -o ServerAliveCountMax=4'
+          app-server ansible_host=${{ secrets.EC2_HOST }} ansible_user=${{ secrets.EC2_USER }} ansible_ssh_private_key_file=/tmp/deploy_key.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ConnectionAttempts=6 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ControlMaster=no -o ControlPath=none'
           EOF
 
       - name: Pre-deploy SSH check

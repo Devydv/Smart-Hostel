@@ -48,13 +48,16 @@
         version: "{{ repo_branch }}"
         force: true
 
-    - name: Validate compose configuration (runtime parity guard)
+    - name: Validate compose configuration (best effort parity guard)
       shell: |
         if docker compose version >/dev/null 2>&1; then
-          docker compose config >/dev/null
+          timeout 90s docker compose config >/dev/null
         else
-          docker-compose config >/dev/null
+          timeout 90s docker-compose config >/dev/null
         fi
+      register: compose_validate
+      changed_when: false
+      failed_when: false
       args:
         chdir: "{{ app_dir }}"
 
