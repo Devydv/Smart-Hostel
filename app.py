@@ -20,6 +20,20 @@ def login_required(role):
     return session.get("role") == role
 
 
+def verify_password(stored_password, provided_password):
+    """Support both hashed and legacy plaintext passwords during migration."""
+    if not stored_password:
+        return False, False
+
+    if stored_password == provided_password:
+        return True, True
+
+    try:
+        return check_password_hash(stored_password, provided_password), False
+    except ValueError:
+        return False, False
+
+
 def sync_room_status(cursor, room_id):
     cursor.execute(
         """
@@ -79,10 +93,22 @@ def login():
             conn   = get_db_connection()
             cursor = conn.cursor(dictionary=True)
             cursor.execute(
-                "SELECT * FROM users WHERE username=%s AND password=%s AND role=%s",
-                (username, password, role)
+                "SELECT * FROM users WHERE username=%s AND role=%s",
+                (username, role)
             )
             user = cursor.fetchone()
+
+            if user:
+                password_ok, needs_migration = verify_password(user.get("password"), password)
+                if not password_ok:
+                    user = None
+                elif needs_migration:
+                    cursor.execute(
+                        "UPDATE users SET password=%s WHERE user_id=%s",
+                        (generate_password_hash(password), user["user_id"]),
+                    )
+                    conn.commit()
+
             cursor.close(); conn.close()
         except Exception as e:
             return render_template("login.html", error=f"Database error: {e}")
@@ -124,6 +150,8 @@ def register():
         if len(password) < 6:
             return render_template("register.html", error="Password must be at least 6 characters.")
 
+        password_hash = generate_password_hash(password)
+
         try:
             conn   = get_db_connection()
             cursor = conn.cursor(dictionary=True)
@@ -153,7 +181,7 @@ def register():
                 cursor.execute("""
                     INSERT INTO users (username, password, role, linked_student_id)
                     VALUES (%s,%s,'STUDENT',%s)
-                """, (email, password, new_id))
+                """, (email, password_hash, new_id))
                 conn.commit()
 
             elif role == "WARDEN":
@@ -173,7 +201,7 @@ def register():
                 cursor.execute("""
                     INSERT INTO users (username, password, role, linked_warden_id)
                     VALUES (%s,%s,'WARDEN',%s)
-                """, (email, password, new_id))
+                """, (email, password_hash, new_id))
                 conn.commit()
 
             elif role == "ADMIN":
@@ -192,7 +220,7 @@ def register():
                 cursor.execute("""
                     INSERT INTO users (username, password, role, linked_admin_id)
                     VALUES (%s,%s,'ADMIN',%s)
-                """, (email, password, new_id))
+                """, (email, password_hash, new_id))
                 conn.commit()
 
             cursor.close(); conn.close()
@@ -221,24 +249,87 @@ def student_dashboard():
     cursor.execute("SELECT * FROM students WHERE student_id=%s", (student_id,))
     student = cursor.fetchone()
     room = None
+    roommates = []
+    payment_status = "No record"
+    latest_fee_amount = None
+    next_due_date_display = "N/A"
+    active_complaints = 0
+    resolved_complaints = 0
     try:
         cursor.execute(
             "SELECT r.* FROM rooms r JOIN room_allocation ra ON r.room_id=ra.room_id WHERE ra.student_id=%s AND ra.status='Approved' ORDER BY ra.allocated_at DESC LIMIT 1",
             (student_id,))
         room = cursor.fetchone()
+        if room:
+            cursor.execute(
+                """
+                SELECT s.student_id, s.name
+                FROM room_allocation ra
+                JOIN students s ON s.student_id = ra.student_id
+                WHERE ra.room_id = %s
+                  AND ra.status = 'Approved'
+                  AND ra.student_id <> %s
+                ORDER BY s.name
+                """,
+                (room["room_id"], student_id),
+            )
+            roommates = cursor.fetchall()
     except Exception: pass
     fee = None
     try:
         cursor.execute("SELECT * FROM fees WHERE student_id=%s ORDER BY due_date DESC LIMIT 1", (student_id,))
         fee = cursor.fetchone()
+        if fee:
+            payment_status = fee.get("payment_status") or "No record"
+            latest_fee_amount = fee.get("amount")
+            due_date = fee.get("due_date")
+            if due_date and hasattr(due_date, "strftime"):
+                next_due_date_display = due_date.strftime("%b %d, %Y")
+            elif due_date:
+                next_due_date_display = str(due_date)
     except Exception: pass
+
+    complaint_counts = []
+    try:
+        cursor.execute(
+            """
+            SELECT LOWER(REPLACE(status, ' ', '_')) AS status_key, COUNT(*) AS total
+            FROM complaints
+            WHERE student_id=%s
+            GROUP BY LOWER(REPLACE(status, ' ', '_'))
+            """,
+            (student_id,),
+        )
+        complaint_counts = cursor.fetchall()
+        for row in complaint_counts:
+            status_key = row.get("status_key")
+            count = row.get("total", 0)
+            if status_key == "resolved":
+                resolved_complaints += count
+            else:
+                active_complaints += count
+    except Exception:
+        complaint_counts = []
+
     complaints = []
     try:
         cursor.execute("SELECT * FROM complaints WHERE student_id=%s ORDER BY created_at DESC LIMIT 5", (student_id,))
         complaints = cursor.fetchall()
     except Exception: pass
     cursor.close(); conn.close()
-    return render_template("student/dashboard.html", student=student, room=room, fee=fee, complaints=complaints)
+    return render_template(
+        "student/dashboard.html",
+        student=student,
+        room=room,
+        roommates=roommates,
+        fee=fee,
+        payment_status=payment_status,
+        latest_fee_amount=latest_fee_amount,
+        next_due_date_display=next_due_date_display,
+        active_complaints=active_complaints,
+        resolved_complaints=resolved_complaints,
+        complaints=complaints,
+    )
 
 
 @app.route("/student/room-booking", methods=["GET", "POST"])
