@@ -3,14 +3,13 @@ SHELL := /bin/bash
 PYTHON ?= $(shell if [ -x ./.venv/bin/python ]; then echo ./.venv/bin/python; else echo python3; fi)
 PIP ?= $(PYTHON) -m pip
 COMPOSE ?= docker compose
-OBS_COMPOSE ?= docker compose -f docker-compose.yml -f infra/observability/docker-compose.observability.yml
 EC2_HOST ?=
 REPO ?= Devydv/Smart-Hoste
 REF ?=
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup up down status logs lint test ci-check clean health k8s-validate deploy-manual ci-cd-show parity-check monitor-up monitor-down monitor-status rollback
+.PHONY: help setup up down status logs lint test ci-check clean health k8s-validate deploy-manual ci-cd-show parity-check rollback
 
 help:
 	@echo "Available targets:"
@@ -23,9 +22,6 @@ help:
 	@echo "  make test           - Run Pytest"
 	@echo "  make ci-check       - Lint + test + compose config + docker build"
 	@echo "  make parity-check   - Validate local/CI/deploy environment parity"
-	@echo "  make monitor-up     - Start Prometheus and Grafana"
-	@echo "  make monitor-down   - Stop Prometheus and Grafana"
-	@echo "  make monitor-status - Show observability stack status"
 	@echo "  make clean          - Remove local cache artifacts"
 	@echo "  make k8s-validate   - Offline Kubernetes manifest validation"
 	@echo "  make ci-cd-show     - Show latest full CI/CD run details"
@@ -66,16 +62,6 @@ ci-check:
 parity-check:
 	$(PYTHON) scripts/check_env_parity.py
 
-monitor-up:
-	$(OBS_COMPOSE) up -d prometheus grafana
-
-monitor-down:
-	$(OBS_COMPOSE) stop prometheus grafana
-	$(OBS_COMPOSE) rm -f prometheus grafana
-
-monitor-status:
-	$(OBS_COMPOSE) ps
-
 clean:
 	rm -rf __pycache__ .pytest_cache .ruff_cache
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
@@ -100,4 +86,4 @@ deploy-manual:
 rollback:
 	if [ -z "$(REF)" ]; then echo "REF is required, e.g. make rollback REF=v1.0-deploy-green"; exit 1; fi
 	ansible-playbook -i infra/ansible/inventory.ini infra/ansible/deploy.yml \
-	  --extra-vars "repo_url=https://github.com/Devydv/Smart-Hoste.git repo_branch=$(REF) app_dir=/opt/smart_hostel install_packages=false enable_observability=true"
+	  --extra-vars "repo_url=https://github.com/Devydv/Smart-Hoste.git repo_branch=$(REF) app_dir=/opt/smart_hostel install_packages=false"

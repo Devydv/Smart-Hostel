@@ -1,71 +1,16 @@
-import os
-import time
 import traceback
 
-from flask import Flask, Response, g, jsonify, redirect, render_template, request, session, url_for
-from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from db import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = "smart_hostel_secret_key"
 
-HTTP_REQUESTS = Counter(
-    "smarthostel_http_requests_total",
-    "Total HTTP requests",
-    ["method", "endpoint", "status"],
-)
-HTTP_REQUEST_LATENCY = Histogram(
-    "smarthostel_http_request_latency_seconds",
-    "HTTP request latency in seconds",
-    ["method", "endpoint"],
-    buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
-)
-HTTP_ERRORS = Counter(
-    "smarthostel_http_errors_total",
-    "Total 5xx HTTP responses",
-    ["method", "endpoint", "status"],
-)
-APP_HEALTH = Gauge("smarthostel_app_health", "Application health state")
-APP_INFO = Gauge("smarthostel_app_info", "Application build metadata", ["version"])
-
-APP_HEALTH.set(1)
-APP_INFO.labels(version=os.environ.get("APP_VERSION", "dev")).set(1)
-
-
-@app.before_request
-def start_request_timer():
-    g.request_start = time.perf_counter()
-
-
-@app.after_request
-def observe_request_metrics(response):
-    start = getattr(g, "request_start", None)
-    if start is None:
-        return response
-
-    endpoint = request.endpoint or request.path
-    method = request.method
-    status = str(response.status_code)
-    duration = time.perf_counter() - start
-
-    HTTP_REQUESTS.labels(method=method, endpoint=endpoint, status=status).inc()
-    HTTP_REQUEST_LATENCY.labels(method=method, endpoint=endpoint).observe(duration)
-
-    if response.status_code >= 500:
-        HTTP_ERRORS.labels(method=method, endpoint=endpoint, status=status).inc()
-
-    return response
-
 
 @app.route("/health")
 def health_check():
     return jsonify({"status": "ok"}), 200
-
-
-@app.route("/metrics")
-def metrics():
-    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
 
 @app.errorhandler(500)

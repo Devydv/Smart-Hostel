@@ -84,7 +84,6 @@ make rollback REF=v1.0-deploy-green
 
 Post-rollback checks:
 1. `make health EC2_HOST=<host>`
-2. `curl --fail http://<EC2_HOST>:5000/metrics`
 
 ## Known-Good Reference
 

@@ -164,7 +164,7 @@ jobs:
           for attempt in 1 2; do
             echo "Ansible deploy attempt ${attempt}..."
             if timeout 25m ansible-playbook -i /tmp/inventory.ini infra/ansible/deploy.yml \
-              --extra-vars "repo_url=https://github.com/${{ github.repository }}.git repo_branch=main app_dir=/opt/smart_hostel install_packages=false enable_observability=false web_image=${WEB_IMAGE} ghcr_username=${GHCR_USER} ghcr_token=${GHCR_TOKEN}"; then
+              --extra-vars "repo_url=https://github.com/${{ github.repository }}.git repo_branch=main app_dir=/opt/smart_hostel install_packages=false web_image=${WEB_IMAGE} ghcr_username=${GHCR_USER} ghcr_token=${GHCR_TOKEN}"; then
               exit 0
             fi
             echo "Deploy attempt ${attempt} failed, retrying in 20s..."
@@ -177,8 +177,7 @@ jobs:
         if: steps.secrets.outputs.ready == 'true'
         run: |
           for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if curl --fail --max-time 10 "http://${{ secrets.EC2_HOST }}:5000/health" > /dev/null && \
-               curl --fail --max-time 10 "http://${{ secrets.EC2_HOST }}:5000/metrics" > /dev/null; then
+            if curl --fail --max-time 10 "http://${{ secrets.EC2_HOST }}:5000/health" > /dev/null; then
               echo "Health check passed on attempt ${attempt}."
               exit 0
             fi

@@ -44,38 +44,9 @@ Most common targets:
 5. `make test`
 6. `make parity-check`
 7. `make ci-check`
-8. `make monitor-up`
-9. `make monitor-status`
-10. `make monitor-down`
-11. `make clean`
-12. `make down`
-13. `make health EC2_HOST=<host>`
-
-## Observability Stack (Prometheus + Grafana)
-
-Start observability services:
-
-```bash
-make monitor-up
-```
-
-Check status:
-
-```bash
-make monitor-status
-```
-
-Stop observability services:
-
-```bash
-make monitor-down
-```
-
-Default local URLs:
-1. App: http://localhost:5000
-2. App metrics: http://localhost:5000/metrics
-3. Prometheus: http://localhost:9090
-4. Grafana: http://localhost:3000 (admin/admin)
+8. `make clean`
+9. `make down`
+10. `make health EC2_HOST=<host>`
 
 ## Rollback (One Command)
 

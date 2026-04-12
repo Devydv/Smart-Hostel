@@ -9,7 +9,6 @@
     repo_url: https://github.com/Devydv/Smart-Hoste.git
     repo_branch: main
     install_packages: false
-    enable_observability: true
     web_image: ""
     ghcr_username: ""
     ghcr_token: ""
@@ -76,6 +75,14 @@
         path: "{{ app_dir }}/docker-compose.deploy.yml"
         state: absent
 
+    - name: Stop and remove observability containers to reduce host load
+      shell: |
+        docker rm -f smart-hostel-prometheus smart-hostel-grafana >/dev/null 2>&1 || true
+        docker volume rm smart_hostel_final_prometheus_data smart_hostel_final_grafana_data >/dev/null 2>&1 || true
+      changed_when: false
+      args:
+        chdir: "{{ app_dir }}"
+
     - name: Validate compose configuration (best effort parity guard)
       shell: |
         if docker compose version >/dev/null 2>&1; then
@@ -126,35 +133,3 @@
         COMPOSE_PARALLEL_LIMIT: "1"
       args:
         chdir: "{{ app_dir }}"
-
-    - name: Start observability stack (resilient)
-      when: enable_observability | bool
-      shell: |
-        for attempt in 1 2 3; do
-          if docker compose version >/dev/null 2>&1; then
-            if docker compose -f docker-compose.yml -f infra/observability/docker-compose.observability.yml up -d prometheus grafana; then
-              exit 0
-            fi
-          else
-            if docker-compose -f docker-compose.yml -f infra/observability/docker-compose.observability.yml up -d prometheus grafana; then
-              exit 0
-            fi
-          fi
-          echo "Observability startup failed on attempt ${attempt}, retrying in 20s..."
-          sleep 20
-        done
-        exit 1
-      environment:
-        COMPOSE_HTTP_TIMEOUT: "240"
-      register: observability_start
-      changed_when: observability_start.rc == 0
-      failed_when: false
-      args:
-        chdir: "{{ app_dir }}"
-
-    - name: Continue when observability startup is degraded
-      when:
-        - enable_observability | bool
-        - observability_start.rc != 0
-      debug:
-        msg: "Observability stack did not come up in time; app deployment continues."
