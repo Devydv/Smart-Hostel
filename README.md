@@ -247,6 +247,21 @@ curl --fail http://<EC2_HOST>:5000/debug/db
 
 If it returns success, deployment is healthy.
 
+### 7.1 Quick Recovery Runbook
+
+If deployment needs a fast manual recovery:
+
+```bash
+ansible-playbook -i infra/ansible/inventory.ini infra/ansible/deploy.yml \
+	--extra-vars "repo_url=https://github.com/Devydv/Smart-Hoste.git repo_branch=main app_dir=/opt/smart_hostel install_packages=false"
+
+curl --fail http://<EC2_HOST>:5000/debug/db
+```
+
+Expected result:
+1. Ansible play finishes without failed tasks.
+2. Health endpoint returns HTTP success.
+
 ## 8. Security Notes
 
 1. Do not commit private keys or cloud credentials.
@@ -326,3 +341,8 @@ If CD is delayed:
 1. Show CI is green first.
 2. Show CD is in progress and point to active step.
 3. Finish by running the health-check curl command when CD completes.
+
+## 10. Known-Good Baseline
+
+Known-good CI/CD proof (run URL, commit hash, deployment host details) is tracked in:
+1. KNOWN_GOOD.md
