@@ -103,9 +103,8 @@ make rollback REF=v1.0-deploy-green
 ## Documentation
 
 1. Known-good baseline: `KNOWN_GOOD.md`
-2. Daily workflow details: `docs/DAILY_WORKFLOW.md`
-3. Advanced operations (Terraform, Ansible, K8s, recovery): `docs/ADVANCED_OPERATIONS.md`
-4. Terraform backend bootstrap only: `infra/terraform/bootstrap/README.md`
+2. Advanced operations (Terraform, Ansible, K8s, recovery): `docs/ADVANCED_OPERATIONS.md`
+3. Terraform backend bootstrap only: `infra/terraform/bootstrap/README.md`
 
 ## CI/CD Summary
 

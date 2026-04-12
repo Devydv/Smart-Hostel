@@ -20,28 +20,7 @@ Health check:
 make health EC2_HOST=<host>
 ```
 
-Environment parity check:
-
-```bash
-make parity-check
-```
-
-Observability stack (local):
-
-```bash
-make monitor-up
-make monitor-status
-make monitor-down
-```
-
-Default stack is Prometheus + Grafana.
-
-Developer environment helpers:
-
-```bash
-make setup
-make clean
-```
+For day-to-day local workflow and standard commands, use `README.md`.
 
 ## Offline Kubernetes Manifest Validation
 
