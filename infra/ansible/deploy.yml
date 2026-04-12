@@ -69,16 +69,39 @@
           docker-compose rm -sf web mysql || true
           docker-compose up -d --build --force-recreate mysql web
         fi
+      environment:
+        COMPOSE_HTTP_TIMEOUT: "240"
       args:
         chdir: "{{ app_dir }}"
 
-    - name: Start observability stack
+    - name: Start observability stack (resilient)
       when: enable_observability | bool
       shell: |
-        if docker compose version >/dev/null 2>&1; then
-          docker compose -f docker-compose.yml -f infra/observability/docker-compose.observability.yml up -d prometheus grafana
-        else
-          docker-compose -f docker-compose.yml -f infra/observability/docker-compose.observability.yml up -d prometheus grafana
-        fi
+        for attempt in 1 2 3; do
+          if docker compose version >/dev/null 2>&1; then
+            if docker compose -f docker-compose.yml -f infra/observability/docker-compose.observability.yml up -d prometheus grafana; then
+              exit 0
+            fi
+          else
+            if docker-compose -f docker-compose.yml -f infra/observability/docker-compose.observability.yml up -d prometheus grafana; then
+              exit 0
+            fi
+          fi
+          echo "Observability startup failed on attempt ${attempt}, retrying in 20s..."
+          sleep 20
+        done
+        exit 1
+      environment:
+        COMPOSE_HTTP_TIMEOUT: "240"
+      register: observability_start
+      changed_when: observability_start.rc == 0
+      failed_when: false
       args:
         chdir: "{{ app_dir }}"
+
+    - name: Continue when observability startup is degraded
+      when:
+        - enable_observability | bool
+        - observability_start.rc != 0
+      debug:
+        msg: "Observability stack did not come up in time; app deployment continues."
