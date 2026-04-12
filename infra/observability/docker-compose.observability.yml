@@ -30,57 +30,6 @@ services:
     ports:
       - "3000:3000"
 
-  loki:
-    image: grafana/loki:3.1.1
-    container_name: smart-hostel-loki
-    restart: unless-stopped
-    command: -config.file=/etc/loki/config.yml
-    volumes:
-      - ./infra/observability/loki/loki-config.yml:/etc/loki/config.yml:ro
-      - loki_data:/loki
-    ports:
-      - "3100:3100"
-
-  promtail:
-    image: grafana/promtail:3.1.1
-    container_name: smart-hostel-promtail
-    restart: unless-stopped
-    command: -config.file=/etc/promtail/config.yml
-    depends_on:
-      - loki
-    volumes:
-      - ./infra/observability/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - promtail_positions:/tmp
-
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.50.0
-    container_name: smart-hostel-cadvisor
-    restart: unless-stopped
-    privileged: true
-    devices:
-      - /dev/kmsg
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-    ports:
-      - "8080:8080"
-
-  node-exporter:
-    image: prom/node-exporter:v1.8.2
-    container_name: smart-hostel-node-exporter
-    restart: unless-stopped
-    command:
-      - --path.rootfs=/host
-    volumes:
-      - /:/host:ro
-    ports:
-      - "9100:9100"
-
 volumes:
   prometheus_data:
   grafana_data:
-  loki_data:
-  promtail_positions:
