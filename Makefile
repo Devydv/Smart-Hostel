@@ -4,10 +4,11 @@ PYTHON ?= $(shell if [ -x ./.venv/bin/python ]; then echo ./.venv/bin/python; el
 PIP ?= $(PYTHON) -m pip
 COMPOSE ?= docker compose
 EC2_HOST ?=
+REPO ?= Devydv/Smart-Hoste
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup up down status logs lint test ci-check clean health k8s-validate deploy-manual
+.PHONY: help setup up down status logs lint test ci-check clean health k8s-validate deploy-manual ci-cd-show
 
 help:
 	@echo "Available targets:"
@@ -21,6 +22,7 @@ help:
 	@echo "  make ci-check       - Lint + test + compose config + docker build"
 	@echo "  make clean          - Remove local cache artifacts"
 	@echo "  make k8s-validate   - Offline Kubernetes manifest validation"
+	@echo "  make ci-cd-show     - Show latest full CI/CD run details"
 	@echo "  make deploy-manual  - Manual Ansible deploy (needs infra/ansible/inventory.ini)"
 	@echo "  make health EC2_HOST=<host> - Check deployed health endpoint"
 
@@ -61,6 +63,10 @@ clean:
 k8s-validate:
 	docker run --rm -v "$$(pwd)":/work -w /work ghcr.io/yannh/kubeconform:latest \
 	  -summary -strict -ignore-missing-schemas infra/k8s/*.yaml
+
+ci-cd-show:
+	RID=$$(gh run list --repo $(REPO) --workflow ci.yml --limit 1 --json databaseId --jq '.[0].databaseId'); \
+	gh run view $$RID --repo $(REPO) --json status,conclusion,url,jobs
 
 health:
 	if [ -z "$(EC2_HOST)" ]; then echo "EC2_HOST is required"; exit 1; fi

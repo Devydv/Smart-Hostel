@@ -20,6 +20,23 @@ def login_required(role):
     return session.get("role") == role
 
 
+def sync_room_status(cursor, room_id):
+    cursor.execute(
+        """
+        SELECT COUNT(DISTINCT student_id) AS occupied
+        FROM room_allocation
+        WHERE room_id=%s AND status='Approved'
+        """,
+        (room_id,),
+    )
+    occupied = cursor.fetchone()["occupied"]
+    next_status = "Occupied" if occupied > 0 else "Available"
+    cursor.execute(
+        "UPDATE rooms SET status=%s WHERE room_id=%s AND status<>'Maintenance'",
+        (next_status, room_id),
+    )
+
+
 # ── DEBUG ──────────────────────────────────────────────────────────────────────
 @app.route("/debug/db")
 def debug_db():
@@ -240,14 +257,89 @@ def student_room_booking():
     message = None
 
     if request.method == "POST":
-        cursor.execute("""
-            INSERT INTO room_allocation (student_id, room_id, status)
-            VALUES (%s, %s, 'Pending')
-        """, (student_id, request.form["room_id"]))
-        conn.commit()
-        message = ("success", "Room request submitted")
+        room_id = request.form.get("room_id", "").strip()
+        if not room_id.isdigit():
+            message = ("warning", "Invalid room selected.")
+        else:
+            room_id = int(room_id)
 
-    cursor.execute("SELECT * FROM rooms WHERE status='Available'")
+            # Student can have at most one approved room at a time.
+            cursor.execute(
+                """
+                SELECT r.room_number
+                FROM room_allocation ra
+                JOIN rooms r ON r.room_id = ra.room_id
+                WHERE ra.student_id=%s AND ra.status='Approved'
+                ORDER BY ra.allocation_id DESC
+                LIMIT 1
+                """,
+                (student_id,),
+            )
+            approved_room = cursor.fetchone()
+
+            if approved_room:
+                message = (
+                    "warning",
+                    f"You already have an approved room ({approved_room['room_number']}).",
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT allocation_id
+                    FROM room_allocation
+                    WHERE student_id=%s AND room_id=%s AND status='Pending'
+                    LIMIT 1
+                    """,
+                    (student_id, room_id),
+                )
+                existing_pending = cursor.fetchone()
+
+                if existing_pending:
+                    message = ("warning", "You already have a pending request for this room.")
+                else:
+                    cursor.execute(
+                        """
+                        SELECT r.capacity, COUNT(DISTINCT ra.student_id) AS occupied
+                        FROM rooms r
+                        LEFT JOIN room_allocation ra
+                          ON ra.room_id = r.room_id AND ra.status='Approved'
+                        WHERE r.room_id=%s
+                        GROUP BY r.room_id
+                        """,
+                        (room_id,),
+                    )
+                    room_stats = cursor.fetchone()
+
+                    if not room_stats:
+                        message = ("warning", "Selected room was not found.")
+                    elif room_stats["occupied"] >= room_stats["capacity"]:
+                        message = ("warning", "Room is already full.")
+                    else:
+                        cursor.execute(
+                            """
+                            INSERT INTO room_allocation (student_id, room_id, status)
+                            VALUES (%s, %s, 'Pending')
+                            """,
+                            (student_id, room_id),
+                        )
+                        conn.commit()
+                        message = ("success", "Room request submitted")
+
+    cursor.execute(
+        """
+        SELECT r.*
+        FROM rooms r
+        LEFT JOIN (
+            SELECT room_id, COUNT(DISTINCT student_id) AS occupied
+            FROM room_allocation
+            WHERE status='Approved'
+            GROUP BY room_id
+        ) o ON o.room_id = r.room_id
+        WHERE r.status <> 'Maintenance'
+          AND COALESCE(o.occupied, 0) < r.capacity
+        ORDER BY r.room_number
+        """
+    )
     rooms = cursor.fetchall()
 
     cursor.execute("""
@@ -515,7 +607,7 @@ def warden_dashboard():
     SELECT 
         r.room_number,
         r.capacity,
-        COUNT(ra.student_id) AS occupied,
+        COUNT(DISTINCT ra.student_id) AS occupied,
         r.status
     FROM rooms r
     LEFT JOIN room_allocation ra 
@@ -597,13 +689,72 @@ def warden_room_approval():
         aid    = request.form.get("allocation_id")
         action = request.form.get("action")
         if action == "approve":
-            cursor.execute("UPDATE room_allocation SET status='Approved' WHERE allocation_id=%s", (aid,))
-            cursor.execute("""UPDATE rooms r JOIN room_allocation ra ON r.room_id=ra.room_id
-                SET r.status='Occupied' WHERE ra.allocation_id=%s""", (aid,))
+            cursor.execute(
+                "SELECT allocation_id, student_id, room_id, status FROM room_allocation WHERE allocation_id=%s",
+                (aid,),
+            )
+            allocation = cursor.fetchone()
+
+            if not allocation:
+                message = ("warning", "Allocation request not found.")
+            elif allocation["status"] != "Pending":
+                message = ("warning", "Only pending requests can be approved.")
+            else:
+                cursor.execute(
+                    """
+                    SELECT allocation_id
+                    FROM room_allocation
+                    WHERE student_id=%s AND status='Approved'
+                    LIMIT 1
+                    """,
+                    (allocation["student_id"],),
+                )
+                existing_approved = cursor.fetchone()
+
+                if existing_approved:
+                    message = ("warning", "Student already has an approved room.")
+                else:
+                    cursor.execute(
+                        """
+                        SELECT r.capacity, COUNT(DISTINCT ra.student_id) AS occupied
+                        FROM rooms r
+                        LEFT JOIN room_allocation ra
+                          ON ra.room_id = r.room_id AND ra.status='Approved'
+                        WHERE r.room_id=%s
+                        GROUP BY r.room_id
+                        """,
+                        (allocation["room_id"],),
+                    )
+                    room_stats = cursor.fetchone()
+
+                    if not room_stats:
+                        message = ("warning", "Target room not found.")
+                    elif room_stats["occupied"] >= room_stats["capacity"]:
+                        message = ("warning", "Room is full. Cannot approve more students.")
+                    else:
+                        cursor.execute(
+                            "UPDATE room_allocation SET status='Approved' WHERE allocation_id=%s",
+                            (aid,),
+                        )
+                        sync_room_status(cursor, allocation["room_id"])
+                        conn.commit()
+                        message = ("success", "Request approved successfully.")
         elif action == "reject":
-            cursor.execute("UPDATE room_allocation SET status='Rejected' WHERE allocation_id=%s", (aid,))
-        conn.commit()
-        message = ("success", f"Request {action}d successfully.")
+            cursor.execute(
+                "SELECT room_id, status FROM room_allocation WHERE allocation_id=%s",
+                (aid,),
+            )
+            allocation = cursor.fetchone()
+
+            if not allocation:
+                message = ("warning", "Allocation request not found.")
+            elif allocation["status"] != "Pending":
+                message = ("warning", "Only pending requests can be rejected.")
+            else:
+                cursor.execute("UPDATE room_allocation SET status='Rejected' WHERE allocation_id=%s", (aid,))
+                sync_room_status(cursor, allocation["room_id"])
+                conn.commit()
+                message = ("success", "Request rejected successfully.")
     cursor.execute("""
         SELECT ra.allocation_id, s.name AS student_name, r.room_number, r.room_type, ra.status
         FROM room_allocation ra JOIN students s ON ra.student_id=s.student_id
