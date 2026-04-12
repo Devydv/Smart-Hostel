@@ -221,13 +221,13 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(changes(container_start_time_seconds[1h]))",
-          "legendFormat": "restarts/hour",
+          "expr": "time() - process_start_time_seconds{job=\"web\"}",
+          "legendFormat": "uptime (s)",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Container Restarts (1h)",
+      "title": "App Uptime",
       "type": "stat"
     },
     {
@@ -279,8 +279,18 @@
     },
     {
       "datasource": {
-        "type": "loki",
-        "uid": "${DS_LOKI}"
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "unit": "reqps"
+        },
+        "overrides": []
       },
       "gridPos": {
         "h": 9,
@@ -290,25 +300,29 @@
       },
       "id": 6,
       "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": true,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
       },
       "pluginVersion": "11.2.0",
       "targets": [
         {
-          "expr": "{compose_project=\"smart_hostel_final\"}",
-          "queryType": "range",
+          "editorMode": "code",
+          "expr": "sum(rate(smarthostel_http_requests_total[1m])) by (endpoint)",
+          "legendFormat": "{{endpoint}}",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "Centralized Container Logs",
-      "type": "logs"
+      "title": "Requests by Endpoint",
+      "type": "timeseries"
     }
   ],
   "refresh": "10s",

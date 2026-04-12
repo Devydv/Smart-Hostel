@@ -23,8 +23,8 @@ help:
 	@echo "  make test           - Run Pytest"
 	@echo "  make ci-check       - Lint + test + compose config + docker build"
 	@echo "  make parity-check   - Validate local/CI/deploy environment parity"
-	@echo "  make monitor-up     - Start Prometheus, Grafana, Loki, Promtail, cAdvisor, Node Exporter"
-	@echo "  make monitor-down   - Stop observability stack"
+	@echo "  make monitor-up     - Start Prometheus and Grafana"
+	@echo "  make monitor-down   - Stop Prometheus and Grafana"
 	@echo "  make monitor-status - Show observability stack status"
 	@echo "  make clean          - Remove local cache artifacts"
 	@echo "  make k8s-validate   - Offline Kubernetes manifest validation"
@@ -67,11 +67,11 @@ parity-check:
 	$(PYTHON) scripts/check_env_parity.py
 
 monitor-up:
-	$(OBS_COMPOSE) up -d prometheus grafana loki promtail cadvisor node-exporter
+	$(OBS_COMPOSE) up -d prometheus grafana
 
 monitor-down:
-	$(OBS_COMPOSE) stop prometheus grafana loki promtail cadvisor node-exporter
-	$(OBS_COMPOSE) rm -f prometheus grafana loki promtail cadvisor node-exporter
+	$(OBS_COMPOSE) stop prometheus grafana
+	$(OBS_COMPOSE) rm -f prometheus grafana
 
 monitor-status:
 	$(OBS_COMPOSE) ps

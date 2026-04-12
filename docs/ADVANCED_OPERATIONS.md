@@ -34,6 +34,8 @@ make monitor-status
 make monitor-down
 ```
 
+Default stack is Prometheus + Grafana.
+
 Developer environment helpers:
 
 ```bash

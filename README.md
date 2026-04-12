@@ -51,7 +51,7 @@ Most common targets:
 12. `make down`
 13. `make health EC2_HOST=<host>`
 
-## Observability Stack (Prometheus, Grafana, Loki)
+## Observability Stack (Prometheus + Grafana)
 
 Start observability services:
 
@@ -76,7 +76,6 @@ Default local URLs:
 2. App metrics: http://localhost:5000/metrics
 3. Prometheus: http://localhost:9090
 4. Grafana: http://localhost:3000 (admin/admin)
-5. Loki: http://localhost:3100/ready
 
 ## Rollback (One Command)
 

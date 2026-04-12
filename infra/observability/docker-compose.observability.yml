@@ -19,7 +19,6 @@ services:
     restart: unless-stopped
     depends_on:
       - prometheus
-      - loki
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin

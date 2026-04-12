@@ -73,9 +73,9 @@
       when: enable_observability | bool
       shell: |
         if docker compose version >/dev/null 2>&1; then
-          docker compose -f docker-compose.yml -f infra/observability/docker-compose.observability.yml up -d prometheus grafana loki promtail cadvisor node-exporter
+          docker compose -f docker-compose.yml -f infra/observability/docker-compose.observability.yml up -d prometheus grafana
         else
-          docker-compose -f docker-compose.yml -f infra/observability/docker-compose.observability.yml up -d prometheus grafana loki promtail cadvisor node-exporter
+          docker-compose -f docker-compose.yml -f infra/observability/docker-compose.observability.yml up -d prometheus grafana
         fi
       args:
         chdir: "{{ app_dir }}"
