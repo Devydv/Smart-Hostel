@@ -283,19 +283,25 @@ def student_room_booking():
                     f"You already have an approved room ({approved_room['room_number']}).",
                 )
             else:
+                # Keep workflow simple: one active pending request per student.
                 cursor.execute(
                     """
-                    SELECT allocation_id
-                    FROM room_allocation
-                    WHERE student_id=%s AND room_id=%s AND status='Pending'
+                    SELECT ra.allocation_id, r.room_number
+                    FROM room_allocation ra
+                    JOIN rooms r ON r.room_id = ra.room_id
+                    WHERE ra.student_id=%s AND ra.status='Pending'
+                    ORDER BY ra.allocation_id DESC
                     LIMIT 1
                     """,
-                    (student_id, room_id),
+                    (student_id,),
                 )
-                existing_pending = cursor.fetchone()
+                any_pending = cursor.fetchone()
 
-                if existing_pending:
-                    message = ("warning", "You already have a pending request for this room.")
+                if any_pending:
+                    message = (
+                        "warning",
+                        f"You already have a pending request (Room {any_pending['room_number']}).",
+                    )
                 else:
                     cursor.execute(
                         """
@@ -571,11 +577,10 @@ def warden_dashboard():
     cursor.execute("SELECT COUNT(*) AS total FROM rooms")
     total_rooms = cursor.fetchone()["total"]
 
-    cursor.execute("SELECT COUNT(*) AS occupied FROM rooms WHERE status='Occupied'")
+    cursor.execute("SELECT COUNT(DISTINCT room_id) AS occupied FROM room_allocation WHERE status='Approved'")
     occupied_rooms = cursor.fetchone()["occupied"]
 
-    cursor.execute("SELECT COUNT(*) AS available FROM rooms WHERE status='Available'")
-    available_rooms = cursor.fetchone()["available"]
+    available_rooms = max(total_rooms - occupied_rooms, 0)
 
     # Complaints
     cursor.execute("SELECT COUNT(*) AS count FROM complaints WHERE status='Pending'")
@@ -621,8 +626,17 @@ def warden_dashboard():
         SELECT c.*, s.name, r.room_number
         FROM complaints c
         JOIN students s ON c.student_id = s.student_id
-        LEFT JOIN room_allocation ra ON ra.student_id = s.student_id AND ra.status='Approved'
-        LEFT JOIN rooms r ON r.room_id = ra.room_id
+        LEFT JOIN (
+            SELECT ra.student_id, ra.room_id
+            FROM room_allocation ra
+            WHERE ra.status='Approved'
+              AND ra.allocation_id = (
+                SELECT MAX(ra2.allocation_id)
+                FROM room_allocation ra2
+                WHERE ra2.student_id = ra.student_id AND ra2.status='Approved'
+              )
+        ) lr ON lr.student_id = s.student_id
+        LEFT JOIN rooms r ON r.room_id = lr.room_id
         ORDER BY c.created_at DESC
         LIMIT 5
     """)
@@ -632,8 +646,18 @@ def warden_dashboard():
     cursor.execute("""
         SELECT s.student_id, s.name, r.room_number, 'Active' as status
         FROM students s
-        LEFT JOIN room_allocation ra ON s.student_id = ra.student_id AND ra.status='Approved'
-        LEFT JOIN rooms r ON r.room_id = ra.room_id
+        LEFT JOIN (
+            SELECT ra.student_id, ra.room_id
+            FROM room_allocation ra
+            WHERE ra.status='Approved'
+              AND ra.allocation_id = (
+                SELECT MAX(ra2.allocation_id)
+                FROM room_allocation ra2
+                WHERE ra2.student_id = ra.student_id AND ra2.status='Approved'
+              )
+        ) lr ON s.student_id = lr.student_id
+        LEFT JOIN rooms r ON r.room_id = lr.room_id
+        ORDER BY s.name
     """)
     students = cursor.fetchall()
 
@@ -736,6 +760,14 @@ def warden_room_approval():
                             "UPDATE room_allocation SET status='Approved' WHERE allocation_id=%s",
                             (aid,),
                         )
+                        cursor.execute(
+                            """
+                            UPDATE room_allocation
+                            SET status='Rejected'
+                            WHERE student_id=%s AND status='Pending' AND allocation_id<>%s
+                            """,
+                            (allocation["student_id"], aid),
+                        )
                         sync_room_status(cursor, allocation["room_id"])
                         conn.commit()
                         message = ("success", "Request approved successfully.")
@@ -820,12 +852,11 @@ def admin_dashboard():
     total_users = cursor.fetchone()["c"]
     cursor.execute("SELECT COUNT(*) AS c FROM students")
     total_students = cursor.fetchone()["c"]
-    cursor.execute("SELECT COUNT(*) AS c FROM rooms WHERE status='Occupied'")
+    cursor.execute("SELECT COUNT(DISTINCT room_id) AS c FROM room_allocation WHERE status='Approved'")
     occupied = cursor.fetchone()["c"]
-    cursor.execute("SELECT COUNT(*) AS c FROM rooms WHERE status='Available'")
-    available_rooms = cursor.fetchone()["c"]
     cursor.execute("SELECT COUNT(*) AS c FROM rooms")
     total_rooms = cursor.fetchone()["c"]
+    available_rooms = max(total_rooms - occupied, 0)
     occupancy_rate = int((occupied / total_rooms) * 100) if total_rooms else 0
     pending_payments = 0
     try:
@@ -950,10 +981,18 @@ def admin_students():
     cursor.execute("""
         SELECT s.*, r.room_number
         FROM students s
-        LEFT JOIN room_allocation ra 
-            ON ra.student_id = s.student_id AND ra.status='Approved'
+        LEFT JOIN (
+            SELECT ra.student_id, ra.room_id
+            FROM room_allocation ra
+            WHERE ra.status='Approved'
+              AND ra.allocation_id = (
+                SELECT MAX(ra2.allocation_id)
+                FROM room_allocation ra2
+                WHERE ra2.student_id = ra.student_id AND ra2.status='Approved'
+              )
+        ) lr ON lr.student_id = s.student_id
         LEFT JOIN rooms r 
-            ON r.room_id = ra.room_id
+            ON r.room_id = lr.room_id
         ORDER BY s.name
     """)
 
@@ -978,7 +1017,7 @@ def admin_reports():
     total_students = cursor.fetchone()["count"]
 
     # Occupied rooms
-    cursor.execute("SELECT COUNT(*) AS count FROM rooms WHERE status='Occupied'")
+    cursor.execute("SELECT COUNT(DISTINCT room_id) AS count FROM room_allocation WHERE status='Approved'")
     occupied_rooms = cursor.fetchone()["count"]
 
     # Pending complaints
