@@ -263,7 +263,7 @@ def student_dashboard():
         if room:
             cursor.execute(
                 """
-                SELECT s.student_id, s.name
+                                SELECT DISTINCT s.student_id, s.name
                 FROM room_allocation ra
                 JOIN students s ON s.student_id = ra.student_id
                 WHERE ra.room_id = %s
