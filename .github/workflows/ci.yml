@@ -63,7 +63,7 @@ jobs:
           version: "v1.31.0"
 
       - name: Validate Kubernetes manifests (client dry-run)
-        run: kubectl apply --dry-run=client --validate=false -f infra/k8s
+        run: kubectl create --dry-run=client -f infra/k8s
 
       - name: Docker build
         run: docker build -t smart-hostel:${{ github.sha }} .
