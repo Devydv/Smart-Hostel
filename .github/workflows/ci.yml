@@ -80,9 +80,9 @@ jobs:
 
       - name: Publish web image to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/smart-hoste-web
         run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_NAME="ghcr.io/${OWNER_LC}/smart-hoste-web"
           echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
           docker tag smart-hostel:${{ github.sha }} ${IMAGE_NAME}:${{ github.sha }}
           docker tag smart-hostel:${{ github.sha }} ${IMAGE_NAME}:latest
@@ -156,10 +156,11 @@ jobs:
       - name: Deploy with Ansible
         if: steps.secrets.outputs.ready == 'true'
         env:
-          WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/smart-hoste-web:${{ github.sha }}
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ github.token }}
         run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          WEB_IMAGE="ghcr.io/${OWNER_LC}/smart-hoste-web:${{ github.sha }}"
           for attempt in 1 2; do
             echo "Ansible deploy attempt ${attempt}..."
             if timeout 25m ansible-playbook -i /tmp/inventory.ini infra/ansible/deploy.yml \
