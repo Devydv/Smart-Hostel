@@ -52,8 +52,8 @@
         if docker compose version >/dev/null 2>&1; then
           docker compose up -d --build web
         else
-          docker-compose rm -sf web || true
-          docker-compose up -d --build --force-recreate web
+          docker-compose rm -sf web mysql || true
+          docker-compose up -d --build --force-recreate mysql web
         fi
       args:
         chdir: "{{ app_dir }}"
