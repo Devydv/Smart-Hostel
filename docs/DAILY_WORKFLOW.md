@@ -2,7 +2,13 @@
 
 This guide is the default day-to-day path.
 
-## 1. Start and run locally
+## 1. Prepare local environment
+
+```bash
+make setup
+```
+
+## 2. Start and run locally
 
 ```bash
 make up
@@ -23,7 +29,13 @@ This runs:
 3. Docker compose config validation
 4. Docker image build
 
-## 3. Commit and push
+Optional local cleanup:
+
+```bash
+make clean
+```
+
+## 4. Commit and push
 
 ```bash
 git add .
@@ -31,12 +43,12 @@ git commit -m "your change"
 git push origin <branch>
 ```
 
-## 4. Watch CI/CD
+## 5. Watch CI/CD
 
 1. CI runs on push and pull requests.
 2. CD runs on pushes to `main`.
 
-## 5. Stop local services
+## 6. Stop local services
 
 ```bash
 make down

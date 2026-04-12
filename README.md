@@ -4,19 +4,25 @@ Smart Hostel Final is a Flask + MySQL hostel management app with CI/CD deploymen
 
 ## Quick Start (Daily Path)
 
-1. Start local stack.
+1. Create the local Python environment.
+
+```bash
+make setup
+```
+
+2. Start local stack.
 
 ```bash
 make up
 ```
 
-2. Run quality checks.
+3. Run quality checks.
 
 ```bash
 make ci-check
 ```
 
-3. Stop stack when done.
+4. Stop stack when done.
 
 ```bash
 make down
@@ -31,12 +37,15 @@ make help
 ```
 
 Most common targets:
-1. `make up`
-2. `make down`
-3. `make lint`
-4. `make test`
-5. `make ci-check`
-6. `make health EC2_HOST=<host>`
+1. `make setup`
+2. `make up`
+3. `make status`
+4. `make lint`
+5. `make test`
+6. `make ci-check`
+7. `make clean`
+8. `make down`
+9. `make health EC2_HOST=<host>`
 
 ## Project Map
 

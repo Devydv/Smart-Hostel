@@ -20,6 +20,13 @@ Health check:
 make health EC2_HOST=<host>
 ```
 
+Developer environment helpers:
+
+```bash
+make setup
+make clean
+```
+
 ## Offline Kubernetes Manifest Validation
 
 Use cluster-independent schema validation:
