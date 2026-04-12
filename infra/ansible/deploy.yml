@@ -61,16 +61,26 @@
       args:
         chdir: "{{ app_dir }}"
 
-    - name: Build and start containers
+    - name: Build and start containers (resilient)
       shell: |
-        if docker compose version >/dev/null 2>&1; then
-          docker compose up -d --build web
-        else
-          docker-compose rm -sf web mysql || true
-          docker-compose up -d --build --force-recreate mysql web
-        fi
+        for attempt in 1 2 3; do
+          if docker compose version >/dev/null 2>&1; then
+            if timeout 20m docker compose up -d --build web; then
+              exit 0
+            fi
+          else
+            docker-compose rm -sf web mysql || true
+            if timeout 20m docker-compose up -d --build --force-recreate mysql web; then
+              exit 0
+            fi
+          fi
+          echo "Web container build/start failed on attempt ${attempt}, retrying in 20s..."
+          sleep 20
+        done
+        exit 1
       environment:
-        COMPOSE_HTTP_TIMEOUT: "240"
+        COMPOSE_HTTP_TIMEOUT: "600"
+        DOCKER_CLIENT_TIMEOUT: "600"
       args:
         chdir: "{{ app_dir }}"
 
