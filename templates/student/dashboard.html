@@ -92,19 +92,19 @@
     .card-desc { font-size: 0.78rem; color: var(--gray-400); margin-top: 0.2rem; }
     .card-body { padding: 1rem 1.25rem 1.25rem; }
 
-    /* Roommates */
-    .roommate-item {
+    /* Room occupants */
+    .occupant-item {
       display: flex; align-items: center; gap: 0.625rem;
       padding: 0.5rem 0.75rem; background: var(--gray-50);
       border-radius: var(--radius-sm); margin-bottom: 0.5rem;
     }
-    .roommate-avatar {
+    .occupant-avatar {
       width: 32px; height: 32px; border-radius: 50%;
       background: var(--blue-100); display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
-    .roommate-avatar svg { width: 16px; height: 16px; color: var(--blue-600); }
-    .roommate-name { font-size: 0.85rem; }
+    .occupant-avatar svg { width: 16px; height: 16px; color: var(--blue-600); }
+    .occupant-name { font-size: 0.85rem; }
 
     /* Btn outline */
     .btn-outline {
@@ -328,20 +328,20 @@ window.onclick = function(event) {
         <p style="font-size:0.78rem;font-weight:500;color:var(--gray-500);margin-bottom:0.5rem;">Room Occupants</p>
         {% if room and roommates %}
           {% for mate in roommates %}
-          <div class="roommate-item">
-            <div class="roommate-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-            <span class="roommate-name">{{ mate.name }}{% if mate.student_id == student.student_id %} (You){% endif %}</span>
+          <div class="occupant-item">
+            <div class="occupant-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+            <span class="occupant-name">{{ mate.name }}{% if mate.student_id == student.student_id %} (You){% endif %}</span>
           </div>
           {% endfor %}
         {% elif room %}
-          <div class="roommate-item">
-            <div class="roommate-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-            <span class="roommate-name">No students assigned yet</span>
+          <div class="occupant-item">
+            <div class="occupant-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+            <span class="occupant-name">No students assigned yet</span>
           </div>
         {% else %}
-          <div class="roommate-item">
-            <div class="roommate-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-            <span class="roommate-name">No room allocated</span>
+          <div class="occupant-item">
+            <div class="occupant-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+            <span class="occupant-name">No room allocated</span>
           </div>
         {% endif %}
         <a href="/student/complaints" class="btn-outline">
