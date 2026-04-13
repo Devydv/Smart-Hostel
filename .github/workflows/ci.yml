@@ -181,6 +181,10 @@ jobs:
               image: ${WEB_IMAGE}
           EOC
 
+          # Work around docker-compose v1 recreate bug (KeyError: ContainerConfig)
+          # by removing the old web container before bringing services up.
+          ${DOCKER_CMD} rm -f smart-hostel-web >/dev/null 2>&1 || true
+
           ${COMPOSE_CMD} -f docker-compose.yml -f docker-compose.deploy.yml pull web
           ${COMPOSE_CMD} -f docker-compose.yml -f docker-compose.deploy.yml up -d --no-build mysql web
           EOF
