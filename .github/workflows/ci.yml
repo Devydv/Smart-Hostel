@@ -181,12 +181,12 @@ jobs:
               image: ${WEB_IMAGE}
           EOC
 
-          # Work around docker-compose v1 recreate bug (KeyError: ContainerConfig)
-          # by removing the old web container before bringing services up.
-          ${DOCKER_CMD} rm -f smart-hostel-web >/dev/null 2>&1 || true
+          # Clean up legacy container names from previous compose project naming schemes.
+          # This avoids name-conflict failures when the old v1 stack left hashed names behind.
+          ${DOCKER_CMD} ps -a --format '{{.Names}}' | grep 'smart-hostel-web' | xargs -r ${DOCKER_CMD} rm -f || true
 
-          ${COMPOSE_CMD} -f docker-compose.yml -f docker-compose.deploy.yml pull web
-          ${COMPOSE_CMD} -f docker-compose.yml -f docker-compose.deploy.yml up -d --no-build mysql web
+          COMPOSE_PROJECT_NAME="smart-hostel" ${COMPOSE_CMD} -f docker-compose.yml -f docker-compose.deploy.yml pull web
+          COMPOSE_PROJECT_NAME="smart-hostel" ${COMPOSE_CMD} -f docker-compose.yml -f docker-compose.deploy.yml up -d --no-build --remove-orphans mysql web
           EOF
 
       - name: Verify health
