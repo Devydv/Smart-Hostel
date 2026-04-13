@@ -141,20 +141,23 @@ jobs:
           export WEB_IMAGE
           export ANSIBLE_HOST_KEY_CHECKING=False
 
+          RC=1
           for attempt in 1 2 3; do
-            if ansible-playbook \
+            ansible-playbook \
               -i "${{ secrets.EC2_HOST }}," \
               -u "${{ secrets.EC2_USER }}" \
               --private-key /tmp/deploy_key.pem \
               --ssh-common-args "${SSH_COMMON_ARGS}" \
               -T 60 \
               --forks 1 \
-              infra/ansible/deploy.yml; then
+              infra/ansible/deploy.yml
+
+            RC=$?
+            if [ "${RC}" -eq 0 ]; then
               echo "Ansible deploy succeeded on attempt ${attempt}."
               exit 0
             fi
 
-            RC=$?
             if [ "${attempt}" -lt 3 ]; then
               echo "Ansible deploy failed on attempt ${attempt} (exit ${RC}). Retrying in 20s..."
               sleep 20
@@ -162,7 +165,7 @@ jobs:
           done
 
           echo "Ansible deploy failed after 3 attempts."
-          exit ${RC}
+          exit "${RC}"
 
       - name: Verify health
         if: steps.secrets.outputs.ready == 'true'

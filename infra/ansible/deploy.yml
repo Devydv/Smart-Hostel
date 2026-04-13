@@ -101,6 +101,16 @@
         executable: /bin/bash
       changed_when: false
 
+    - name: Prune unused Docker artifacts to prevent disk exhaustion
+      become: true
+      ansible.builtin.shell: |
+        docker container prune -f || true
+        docker image prune -af || true
+        docker builder prune -af || true
+      args:
+        executable: /bin/bash
+      changed_when: false
+
     - name: Pull web image with compose
       become: true
       ansible.builtin.command: docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull web
