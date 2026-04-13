@@ -6,7 +6,7 @@ Use this document for infrastructure and deployment operations.
 
 Automated deploy is driven by:
 1. `.github/workflows/ci.yml`
-2. Direct SSH execution from the CD job on push to `main`
+2. `infra/ansible/deploy.yml` executed by the CD job on push to `main`
 
 Health check:
 

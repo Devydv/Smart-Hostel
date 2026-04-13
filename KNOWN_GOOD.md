@@ -11,5 +11,5 @@
 ## Notes
 
 - CI validates lint, tests, parity checks, and Docker image build in .github/workflows/ci.yml.
-- CD deploy pulls GHCR web image and deploys over SSH from .github/workflows/ci.yml.
+- CD deploy pulls GHCR web image and runs infra/ansible/deploy.yml from .github/workflows/ci.yml.
 - Deploy workflow now bootstraps Docker on fresh Ubuntu hosts when available via passwordless sudo.

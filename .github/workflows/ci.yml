@@ -118,76 +118,31 @@ jobs:
           echo "SSH connectivity check failed after retries."
           exit 1
 
-      - name: Deploy app over SSH
+      - name: Install Ansible
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible
+
+      - name: Deploy app with Ansible
         if: steps.secrets.outputs.ready == 'true'
         env:
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ github.token }}
+          REPO_URL: https://github.com/${{ github.repository }}.git
+          APP_DIR: /home/${{ secrets.EC2_USER }}/smart_hostel
         run: |
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           WEB_IMAGE="ghcr.io/${OWNER_LC}/smart-hostel-web:${{ github.sha }}"
-          SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ConnectionAttempts=3"
+          export WEB_IMAGE
+          export ANSIBLE_HOST_KEY_CHECKING=False
 
-          ssh -i /tmp/deploy_key.pem ${SSH_OPTS} "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
-            "GHCR_USER='${GHCR_USER}' GHCR_TOKEN='${GHCR_TOKEN}' WEB_IMAGE='${WEB_IMAGE}' REPO_URL='https://github.com/${{ github.repository }}.git' bash -s" <<'EOF'
-          set -euo pipefail
-
-          APP_DIR="$HOME/smart_hostel"
-
-          if [ ! -d "${APP_DIR}/.git" ]; then
-            rm -rf "${APP_DIR}"
-            git clone "${REPO_URL}" "${APP_DIR}"
-          fi
-
-          cd "${APP_DIR}"
-          git fetch origin main
-          git checkout main
-          git reset --hard origin/main
-
-          if docker info >/dev/null 2>&1; then
-            DOCKER_CMD="docker"
-          elif sudo -n docker info >/dev/null 2>&1; then
-            DOCKER_CMD="sudo -n docker"
-          elif sudo -n true >/dev/null 2>&1; then
-            sudo -n apt-get update
-            sudo -n apt-get install -y docker.io docker-compose-v2 || \
-              sudo -n apt-get install -y docker.io
-            sudo -n systemctl enable docker >/dev/null 2>&1 || true
-            sudo -n systemctl start docker
-            DOCKER_CMD="sudo -n docker"
-          else
-            echo "Docker is not available for current user and passwordless sudo is not configured."
-            exit 1
-          fi
-
-          if ! ${DOCKER_CMD} compose version >/dev/null 2>&1; then
-            if sudo -n true >/dev/null 2>&1; then
-              sudo -n apt-get update
-              sudo -n apt-get install -y docker-compose-v2
-            fi
-          fi
-
-          if ! ${DOCKER_CMD} compose version >/dev/null 2>&1; then
-            echo "Docker Compose v2 is required but unavailable."
-            exit 1
-          fi
-          COMPOSE_CMD="${DOCKER_CMD} compose"
-
-          echo "${GHCR_TOKEN}" | ${DOCKER_CMD} login ghcr.io -u "${GHCR_USER}" --password-stdin
-
-          cat > docker-compose.deploy.yml <<EOC
-          services:
-            web:
-              image: ${WEB_IMAGE}
-          EOC
-
-          # Clean up legacy container names from previous compose project naming schemes.
-          # This avoids name-conflict failures when the old v1 stack left hashed names behind.
-          ${DOCKER_CMD} ps -a --format '{{.Names}}' | grep 'smart-hostel-web' | xargs -r ${DOCKER_CMD} rm -f || true
-
-          COMPOSE_PROJECT_NAME="smart-hostel" ${COMPOSE_CMD} -f docker-compose.yml -f docker-compose.deploy.yml pull web
-          COMPOSE_PROJECT_NAME="smart-hostel" ${COMPOSE_CMD} -f docker-compose.yml -f docker-compose.deploy.yml up -d --no-build --remove-orphans mysql web
-          EOF
+          ansible-playbook \
+            -i "${{ secrets.EC2_HOST }}," \
+            -u "${{ secrets.EC2_USER }}" \
+            --private-key /tmp/deploy_key.pem \
+            --ssh-common-args "-o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ConnectionAttempts=3" \
+            infra/ansible/deploy.yml
 
       - name: Verify health
         if: steps.secrets.outputs.ready == 'true'

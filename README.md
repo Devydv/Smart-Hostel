@@ -65,7 +65,7 @@ Most common targets:
 ## CI/CD Summary
 
 1. Push/PR triggers CI (lint, parity check, test, docker build).
-2. Push to `main` triggers CD (SSH deploy + health check).
+2. Push to `main` triggers CD (Ansible deploy over SSH + health check).
 
 Required repository secrets for CD:
 1. `EC2_HOST`

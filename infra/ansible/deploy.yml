@@ -1,0 +1,97 @@
+---
+- name: Deploy Smart Hostel on EC2
+  hosts: all
+  gather_facts: false
+  vars:
+    app_dir: "{{ lookup('env', 'APP_DIR') | default('/home/' + ansible_user + '/smart_hostel', true) }}"
+    repo_url: "{{ lookup('env', 'REPO_URL') }}"
+    web_image: "{{ lookup('env', 'WEB_IMAGE') }}"
+    ghcr_user: "{{ lookup('env', 'GHCR_USER') }}"
+    ghcr_token: "{{ lookup('env', 'GHCR_TOKEN') }}"
+
+  pre_tasks:
+    - name: Validate required deployment variables
+      ansible.builtin.assert:
+        that:
+          - repo_url | length > 0
+          - web_image | length > 0
+          - ghcr_user | length > 0
+          - ghcr_token | length > 0
+        fail_msg: Missing one or more required deployment environment variables.
+
+  tasks:
+    - name: Ensure deployment dependencies are installed
+      become: true
+      ansible.builtin.apt:
+        name:
+          - git
+          - docker.io
+          - docker-compose-v2
+        update_cache: true
+        state: present
+
+    - name: Ensure Docker service is enabled and running
+      become: true
+      ansible.builtin.service:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Verify Docker Compose v2 is available
+      become: true
+      ansible.builtin.command: docker compose version
+      changed_when: false
+
+    - name: Ensure app directory parent exists
+      ansible.builtin.file:
+        path: "{{ app_dir | dirname }}"
+        state: directory
+        mode: "0755"
+
+    - name: Sync application repository
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_dir }}"
+        version: main
+        force: true
+        update: true
+
+    - name: Write deploy compose override
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/docker-compose.deploy.yml"
+        mode: "0644"
+        content: |
+          services:
+            web:
+              image: {{ web_image }}
+
+    - name: Authenticate Docker to GHCR
+      become: true
+      ansible.builtin.command: docker login ghcr.io -u {{ ghcr_user }} --password-stdin
+      args:
+        stdin: "{{ ghcr_token }}"
+      no_log: true
+
+    - name: Remove legacy web containers from old compose naming
+      become: true
+      ansible.builtin.shell: |
+        docker ps -a --format '{{"{{.Names}}"}}' | grep 'smart-hostel-web' | xargs -r docker rm -f || true
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Pull web image with compose
+      become: true
+      ansible.builtin.command: docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull web
+      args:
+        chdir: "{{ app_dir }}"
+      environment:
+        COMPOSE_PROJECT_NAME: smart-hostel
+
+    - name: Start mysql and web services
+      become: true
+      ansible.builtin.command: docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --no-build --remove-orphans mysql web
+      args:
+        chdir: "{{ app_dir }}"
+      environment:
+        COMPOSE_PROJECT_NAME: smart-hostel
