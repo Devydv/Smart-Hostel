@@ -28,6 +28,7 @@
           - docker.io
           - docker-compose-v2
         update_cache: true
+        cache_valid_time: 3600
         state: present
 
     - name: Ensure Docker service is enabled and running

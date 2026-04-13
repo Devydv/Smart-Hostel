@@ -144,7 +144,7 @@ jobs:
             -i "${{ secrets.EC2_HOST }}," \
             -u "${{ secrets.EC2_USER }}" \
             --private-key /tmp/deploy_key.pem \
-            --ssh-common-args "-o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ConnectionAttempts=3" \
+            --ssh-common-args "-o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ConnectionAttempts=3 -o ServerAliveInterval=30 -o ServerAliveCountMax=10" \
             infra/ansible/deploy.yml
 
       - name: Verify health
