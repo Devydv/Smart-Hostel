@@ -52,6 +52,7 @@ body {
 .brand-name {
   font-size: 20px;
   font-weight: bold;
+  color: var(--blue-600);
 }
 
 /* MAIN */
@@ -132,7 +133,7 @@ body {
 }
 
 .btn-outline:hover {
-  background: var(--gray-100);
+  background: var(--blue-100);
 }
 
 /* BADGES */

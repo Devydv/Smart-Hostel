@@ -56,7 +56,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Lint
-        run: ruff check tests db.py
+        run: ruff check app.py tests db.py --ignore E701,E702
 
       - name: Environment parity check
         run: python scripts/check_env_parity.py

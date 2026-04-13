@@ -60,7 +60,7 @@ docker compose up -d --build mysql web
 Then verify:
 
 ```bash
-curl --fail http://<EC2_HOST>:5000/debug/db
+curl --fail http://<EC2_HOST>:5000/health
 ```
 
 ## Known-Good Reference

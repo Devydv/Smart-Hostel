@@ -44,13 +44,13 @@ logs:
 	$(COMPOSE) logs -f --tail=100
 
 lint:
-	$(PYTHON) -m ruff check tests db.py
+	$(PYTHON) -m ruff check app.py tests db.py --ignore E701,E702
 
 test:
 	$(PYTHON) -m pytest -q
 
 ci-check:
-	$(PYTHON) -m ruff check tests db.py
+	$(PYTHON) -m ruff check app.py tests db.py --ignore E701,E702
 	$(PYTHON) -m pytest -q
 	$(PYTHON) scripts/check_env_parity.py
 	$(COMPOSE) config > /dev/null
@@ -74,4 +74,4 @@ ci-cd-show:
 
 health:
 	if [ -z "$(EC2_HOST)" ]; then echo "EC2_HOST is required"; exit 1; fi
-	curl --fail "http://$(EC2_HOST):5000/debug/db"
+	curl --fail "http://$(EC2_HOST):5000/health"

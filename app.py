@@ -1,5 +1,3 @@
-import traceback
-
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from db import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -15,10 +13,9 @@ def health_check():
 
 @app.errorhandler(500)
 def internal_error(e):
-    tb = traceback.format_exc()
-    return f"""<html><body style="font-family:monospace;padding:2rem;background:#1e1e1e;color:#f8f8f2;">
+    return """<html><body style="font-family:monospace;padding:2rem;background:#1e1e1e;color:#f8f8f2;">
     <h2 style="color:#ff5555;">500 — Internal Server Error</h2>
-    <pre style="background:#282a36;padding:1.5rem;border-radius:8px;overflow-x:auto;font-size:13px;">{tb}</pre>
+    <p style="background:#282a36;padding:1.5rem;border-radius:8px;overflow-x:auto;font-size:13px;">Something went wrong. Please try again.</p>
     <a href="/" style="color:#8be9fd;">← Back to Login</a></body></html>""", 500
 
 
@@ -55,37 +52,6 @@ def sync_room_status(cursor, room_id):
         "UPDATE rooms SET status=%s WHERE room_id=%s AND status<>'Maintenance'",
         (next_status, room_id),
     )
-
-
-# ── DEBUG ──────────────────────────────────────────────────────────────────────
-@app.route("/debug/db")
-def debug_db():
-    results = {}
-    try:
-        conn   = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SHOW TABLES")
-        results["tables"] = [list(r.values())[0] for r in cursor.fetchall()]
-        for t in ["users","students","wardens","admins","rooms","room_allocation","complaints","fees"]:
-            try:
-                cursor.execute(f"DESCRIBE `{t}`")
-                results[f"cols_{t}"] = [r["Field"] for r in cursor.fetchall()]
-            except Exception as e:
-                results[f"cols_{t}"] = f"MISSING: {e}"
-        cursor.execute("SELECT user_id, username, role, linked_student_id, linked_warden_id, linked_admin_id FROM users")
-        results["users"] = cursor.fetchall()
-        cursor.close(); conn.close()
-        results["status"] = "Connected OK"
-    except Exception as e:
-        results["status"] = f"FAILED: {e}"
-    rows = "".join(
-        f"<tr><td style='padding:.5rem 1rem;font-weight:600;color:#8be9fd'>{k}</td>"
-        f"<td style='padding:.5rem 1rem'>{v}</td></tr>"
-        for k, v in results.items()
-    )
-    return f"""<html><body style="font-family:monospace;padding:2rem;background:#1e1e1e;color:#f8f8f2;">
-    <h2 style="color:#50fa7b;">DB Debug</h2><table>{rows}</table>
-    <br><a href="/" style="color:#8be9fd;">← Back to Login</a></body></html>"""
 
 
 # ── LOGIN ──────────────────────────────────────────────────────────────────────
