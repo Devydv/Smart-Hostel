@@ -28,6 +28,30 @@ make ci-check
 make down
 ```
 
+## Monitoring (Prometheus + Grafana)
+
+After `make up`, monitoring services are available in separate containers:
+
+1. Prometheus: http://localhost:9090
+2. Grafana: http://localhost:3000
+3. App metrics endpoint: http://localhost:5000/metrics
+
+Grafana defaults come from environment variables:
+1. `GRAFANA_ADMIN_USER` (default `admin`)
+2. `GRAFANA_ADMIN_PASSWORD` (default `admin123`)
+
+The Prometheus data source is auto-provisioned in Grafana.
+The default dashboard `Smart Hostel Overview` is auto-provisioned and includes HTTP request rate, HTTP latency, and MySQL health panels.
+
+If port 5000 is already in use on your machine, set `WEB_PORT` before starting:
+
+```bash
+WEB_PORT=5002 make up
+```
+
+Dashboard path after login:
+1. Dashboards -> Smart Hostel -> Smart Hostel Overview
+
 ## Daily Commands
 
 Use one command surface for regular work:
@@ -54,7 +78,8 @@ Most common targets:
 2. Containers: `Dockerfile`, `docker-compose.yml`
 3. CI/CD: `.github/workflows/ci.yml`
 4. Infrastructure: `infra/terraform/`
-5. Kubernetes manifests: `infra/k8s/`
+5. Monitoring config: `infra/monitoring/`
+6. Kubernetes manifests: `infra/k8s/`
 
 ## Documentation
 

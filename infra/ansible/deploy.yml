@@ -109,9 +109,9 @@
       environment:
         COMPOSE_PROJECT_NAME: smart-hostel
 
-    - name: Start mysql and web services
+    - name: Start mysql, web, and monitoring services
       become: true
-      ansible.builtin.command: docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --no-build --remove-orphans mysql web
+      ansible.builtin.command: docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --no-build --remove-orphans mysql web mysqld-exporter prometheus grafana
       args:
         chdir: "{{ app_dir }}"
       environment:

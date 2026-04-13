@@ -1,9 +1,16 @@
+import os
+
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from db import get_db_connection
+from prometheus_flask_exporter import PrometheusMetrics
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = "smart_hostel_secret_key"
+
+_metrics = None
+if os.environ.get("ENABLE_METRICS", "true").lower() in {"1", "true", "yes", "on"}:
+    _metrics = PrometheusMetrics(app, path="/metrics")
 
 
 @app.route("/health")
