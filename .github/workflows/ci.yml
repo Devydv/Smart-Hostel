@@ -137,15 +137,32 @@ jobs:
         run: |
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           WEB_IMAGE="ghcr.io/${OWNER_LC}/smart-hostel-web:${{ github.sha }}"
+          SSH_COMMON_ARGS="-o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ConnectionAttempts=3 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o ControlMaster=no -o ControlPersist=no -o IdentitiesOnly=yes"
           export WEB_IMAGE
           export ANSIBLE_HOST_KEY_CHECKING=False
 
-          ansible-playbook \
-            -i "${{ secrets.EC2_HOST }}," \
-            -u "${{ secrets.EC2_USER }}" \
-            --private-key /tmp/deploy_key.pem \
-            --ssh-common-args "-o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ConnectionAttempts=3 -o ServerAliveInterval=30 -o ServerAliveCountMax=10" \
-            infra/ansible/deploy.yml
+          for attempt in 1 2 3; do
+            if ansible-playbook \
+              -i "${{ secrets.EC2_HOST }}," \
+              -u "${{ secrets.EC2_USER }}" \
+              --private-key /tmp/deploy_key.pem \
+              --ssh-common-args "${SSH_COMMON_ARGS}" \
+              -T 60 \
+              --forks 1 \
+              infra/ansible/deploy.yml; then
+              echo "Ansible deploy succeeded on attempt ${attempt}."
+              exit 0
+            fi
+
+            RC=$?
+            if [ "${attempt}" -lt 3 ]; then
+              echo "Ansible deploy failed on attempt ${attempt} (exit ${RC}). Retrying in 20s..."
+              sleep 20
+            fi
+          done
+
+          echo "Ansible deploy failed after 3 attempts."
+          exit ${RC}
 
       - name: Verify health
         if: steps.secrets.outputs.ready == 'true'
