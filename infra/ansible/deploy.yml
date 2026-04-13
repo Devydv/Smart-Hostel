@@ -20,7 +20,25 @@
         fail_msg: Missing one or more required deployment environment variables.
 
   tasks:
-    - name: Ensure deployment dependencies are installed
+    - name: Check if git is available
+      ansible.builtin.command: git --version
+      register: git_check
+      changed_when: false
+      failed_when: false
+
+    - name: Check if Docker CLI is available
+      ansible.builtin.command: docker --version
+      register: docker_check
+      changed_when: false
+      failed_when: false
+
+    - name: Check if Docker Compose v2 is available
+      ansible.builtin.command: docker compose version
+      register: compose_check
+      changed_when: false
+      failed_when: false
+
+    - name: Ensure deployment dependencies are installed when missing
       become: true
       ansible.builtin.apt:
         name:
@@ -29,7 +47,9 @@
           - docker-compose-v2
         update_cache: true
         cache_valid_time: 3600
+        lock_timeout: 120
         state: present
+      when: git_check.rc != 0 or docker_check.rc != 0 or compose_check.rc != 0
 
     - name: Ensure Docker service is enabled and running
       become: true
