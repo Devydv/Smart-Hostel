@@ -1,12 +1,12 @@
 # Known-Good Baseline
 
-- Date: 2026-04-12
-- Baseline tag: pending-new-repo-bootstrap
-- Known-good commit: pending
-- Known-good run: pending (new repo: https://github.com/Devydv/Smart-Hostel)
-- Workflow conclusion: pending
+- Date: 2026-04-13
+- Baseline tag: pipeline-stable-2026-04-13
+- Known-good commit: cd19b3a2590c6fed93ad0a24b67e01677fec39d5
+- Known-good run: https://github.com/Devydv/Smart-Hostel/actions/runs/24314629902
+- Workflow conclusion: success (initial run + 2 reruns)
 - Active deployment host instance: i-0705c01d7fb2e3f7c
-- Active deployment host public IP: 44.193.212.4
+- Active deployment host public IP: 3.235.19.13
 
 ## Notes
 
