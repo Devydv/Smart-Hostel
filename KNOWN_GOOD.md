@@ -2,11 +2,11 @@
 
 - Date: 2026-04-13
 - Baseline tag: pipeline-stable-2026-04-13
-- Known-good commit: d7b08152f4bdd7368cc409820a96924c97a7f8d4
-- Known-good run: https://github.com/Devydv/Smart-Hostel/actions/runs/24323451910
+- Known-good commit: 1804a692502389c062fa0c76c759e77d0cfa26ec
+- Known-good run: https://github.com/Devydv/Smart-Hostel/actions/runs/24323643954
 - Workflow conclusion: success (CI and Deploy To EC2 passed)
-- Active deployment host instance: i-0fa2abc49971e7d8a
-- Active deployment host public IP: 100.24.121.149
+- Active deployment host instance: i-079e4b573b797cd9d
+- Active deployment host public IP: 44.211.121.148
 
 ## Notes
 
