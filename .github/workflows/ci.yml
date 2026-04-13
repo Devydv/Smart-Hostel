@@ -183,7 +183,7 @@ jobs:
         run: |
           SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ConnectionAttempts=3"
           for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if ssh -i /tmp/deploy_key.pem ${SSH_OPTS} "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "curl --fail --max-time 10 http://localhost:9090/-/healthy > /dev/null && curl --fail --max-time 10 http://localhost:3000/api/health | grep -q '\"database\":\"ok\"'"; then
+            if ssh -i /tmp/deploy_key.pem ${SSH_OPTS} "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" "curl --fail --max-time 10 http://localhost:9090/-/healthy > /dev/null && curl --fail --max-time 10 http://localhost:3000/api/health | grep -Eq '\"database\"[[:space:]]*:[[:space:]]*\"ok\"'"; then
               echo "Monitoring check passed on attempt ${attempt}."
               exit 0
             fi
