@@ -150,8 +150,8 @@ jobs:
             DOCKER_CMD="sudo -n docker"
           elif sudo -n true >/dev/null 2>&1; then
             sudo -n apt-get update
-            sudo -n apt-get install -y docker.io docker-compose-plugin docker-compose-v2 || \
-              sudo -n apt-get install -y docker.io docker-compose-plugin
+            sudo -n apt-get install -y docker.io docker-compose-v2 || \
+              sudo -n apt-get install -y docker.io
             sudo -n systemctl enable docker >/dev/null 2>&1 || true
             sudo -n systemctl start docker
             DOCKER_CMD="sudo -n docker"
@@ -163,8 +163,7 @@ jobs:
           if ! ${DOCKER_CMD} compose version >/dev/null 2>&1; then
             if sudo -n true >/dev/null 2>&1; then
               sudo -n apt-get update
-              sudo -n apt-get install -y docker-compose-plugin docker-compose-v2 || \
-                sudo -n apt-get install -y docker-compose-plugin
+              sudo -n apt-get install -y docker-compose-v2
             fi
           fi
 
