@@ -12,8 +12,8 @@ from mysql.connector import pooling, Error
 
 DB_CONFIG = {
     "host":     os.environ.get("DB_HOST",     "localhost"),
-    "user":     os.environ.get("DB_USER",     "Hostel"),
-    "password": os.environ.get("DB_PASSWORD", "Koku@#2108"),
+    "user":     os.environ.get("DB_USER",     "hostel"),
+    "password": os.environ.get("DB_PASSWORD", "hostel_pass"),
     "database": os.environ.get("DB_NAME",     "hostel_management"),
 }
 

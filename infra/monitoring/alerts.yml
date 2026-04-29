@@ -1,0 +1,38 @@
+groups:
+  - name: smart-hostel
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Target down"
+          description: "A Prometheus target is down ({{ $labels.job }} / {{ $labels.instance }})."
+
+      - alert: HostDiskLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space"
+          description: "Root filesystem is below 10% free on {{ $labels.instance }}."
+
+      - alert: HostCpuHigh
+        expr: avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m])) > 0.90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage above 90% for 10 minutes on {{ $labels.instance }}."
+
+      - alert: App5xxRateHigh
+        expr: sum(rate(flask_http_request_total{status=~"5.."}[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "App 5xx errors"
+          description: "HTTP 5xx errors detected in the last 5 minutes."

@@ -1,98 +1,193 @@
-# Smart Hostel Final
+# Smart Hostel
 
-Smart Hostel Final is a Flask + MySQL hostel management app with CI/CD deployment to EC2.
+Smart Hostel is a role-based hostel management system built with Flask and MySQL. It supports student services, warden workflows, and admin operations from separate dashboards.
 
-## Quick Start (Daily Path)
+## Features
 
-1. Create the local Python environment.
+1. Authentication and registration for Student, Warden, and Admin roles.
+2. Student portal:
+	- Dashboard with room, fee, and complaint summary.
+	- Room booking requests.
+	- Complaint submission and tracking.
+	- Attendance view.
+	- Food order requests.
+	- Fee history.
+	- Announcements feed.
+3. Warden portal:
+	- Dashboard with occupancy and complaint stats.
+	- Approve or reject room allocation requests.
+	- Resolve or escalate complaints.
+	- Create and delete announcements.
+4. Admin portal:
+	- System dashboard and summary metrics.
+	- Manage rooms and students.
+	- Handle complaint lifecycle.
+	- View reports for occupancy, fees, and pending issues.
+5. Operational endpoints:
+	- Health check endpoint.
+	- Prometheus metrics endpoint.
+6. Audit logging:
+	- Tracks login/logout and write actions for admin, warden, and student roles.
 
-```bash
-make setup
-```
+## Tech Stack
 
-2. Start local stack.
+1. Backend: Flask
+2. Database: MySQL 8
+3. App server (container): Gunicorn
+4. Monitoring: Prometheus + Grafana + mysqld-exporter
+5. Dev quality tools: Ruff, Pytest
+6. Container orchestration (local): Docker Compose
+
+## Project Structure
+
+1. `app.py`: Flask routes and role-based business logic.
+2. `db.py`: MySQL connection pooling.
+3. `templates/`: Role-specific UI pages.
+4. `infra/sql/init.sql`: Full schema + demo seed data.
+5. `docker-compose.yml`: App, DB, and monitoring services.
+6. `Makefile`: Common developer and CI helper commands.
+
+## Database Tables
+
+The schema is initialized from `infra/sql/init.sql` and includes:
+
+1. `students`
+2. `wardens`
+3. `admins`
+4. `users`
+5. `rooms`
+6. `room_allocation`
+7. `complaints`
+8. `fees`
+9. `attendance`
+10. `food_orders`
+11. `announcements`
+
+## Demo Accounts
+
+Seeded by `infra/sql/init.sql`:
+
+1. Student: `student@smarthostel.com` / `123456`
+2. Warden: `warden@smarthostel.com` / `123456`
+3. Admin: `admin@smarthostel.com` / `123456`
+
+Note: On first successful login, legacy plaintext passwords can be migrated to hashed values automatically.
+
+## Quick Start (Docker)
+
+1. Build and start all services:
 
 ```bash
 make up
 ```
 
-3. Run quality checks.
+2. Check status:
 
 ```bash
-make ci-check
+make status
 ```
 
-4. Stop stack when done.
+3. Stop services:
 
 ```bash
 make down
 ```
 
-## Monitoring (Prometheus + Grafana)
+## Local URLs
 
-After `make up`, monitoring services are available in separate containers:
+1. App: http://localhost:5000
+2. Health: http://localhost:5000/health
+3. Metrics: http://localhost:5000/metrics
+4. Prometheus: http://localhost:9090
+5. Grafana: http://localhost:3000
 
-1. Prometheus: http://localhost:9090
-2. Grafana: http://localhost:3000
-3. App metrics endpoint: http://localhost:5000/metrics
-
-Grafana defaults come from environment variables:
-1. `GRAFANA_ADMIN_USER` (default `admin`)
-2. `GRAFANA_ADMIN_PASSWORD` (default `admin123`)
-
-The Prometheus data source is auto-provisioned in Grafana.
-The default dashboard `Smart Hostel Overview` is auto-provisioned and includes HTTP request rate, HTTP latency, and MySQL health panels.
-
-If port 5000 is already in use on your machine, set `WEB_PORT` before starting:
+If port 5000 is occupied:
 
 ```bash
 WEB_PORT=5002 make up
 ```
 
-Dashboard path after login:
-1. Dashboards -> Smart Hostel -> Smart Hostel Overview
+## Run Without Docker (App Only)
 
-## Daily Commands
-
-Use one command surface for regular work:
+1. Create virtual environment and install dependencies:
 
 ```bash
-make help
+make setup
 ```
 
-Most common targets:
-1. `make setup`
-2. `make up`
-3. `make status`
-4. `make lint`
-5. `make test`
-6. `make parity-check`
-7. `make ci-check`
-8. `make clean`
-9. `make down`
-10. `make health EC2_HOST=<host>`
+2. Ensure MySQL is running and schema is loaded from `infra/sql/init.sql`.
 
-## Project Map
+3. Export DB variables (example):
 
-1. App code: `app.py`, `db.py`, `templates/`, `static/`
-2. Containers: `Dockerfile`, `docker-compose.yml`
-3. CI/CD: `.github/workflows/ci.yml`
-4. Infrastructure: `infra/terraform/`
-5. Monitoring config: `infra/monitoring/`
-6. Kubernetes manifests: `infra/k8s/`
+```bash
+export DB_HOST=localhost
+export DB_USER=hostel
+export DB_PASSWORD=hostel_pass
+export DB_NAME=hostel_management
+```
 
-## Documentation
+4. Start Flask app:
 
-1. Known-good baseline: `KNOWN_GOOD.md`
-2. Advanced operations (Terraform, K8s, recovery): `docs/ADVANCED_OPERATIONS.md`
-3. Terraform backend bootstrap only: `infra/terraform/bootstrap/README.md`
+```bash
+python app.py
+```
 
-## CI/CD Summary
+## Important Routes
 
-1. Push/PR triggers CI (lint, parity check, test, docker build).
-2. Push to `main` triggers CD (Ansible deploy over SSH + health check).
+1. Public:
+	- `/`
+	- `/register`
+	- `/logout`
+	- `/health`
+	- `/metrics`
+2. Student:
+	- `/student/dashboard`
+	- `/student/room-booking`
+	- `/student/complaints`
+	- `/student/attendance`
+	- `/student/food-order`
+	- `/student/fees`
+	- `/student/announcements`
+3. Warden:
+	- `/warden/dashboard`
+	- `/warden/complaints`
+	- `/warden/room-approval`
+	- `/warden/announcements`
+4. Admin:
+	- `/admin/dashboard`
+	- `/admin/complaints`
+	- `/admin/rooms`
+	- `/admin/students`
+	- `/admin/reports`
 
-Required repository secrets for CD:
+## Developer Commands
+
+1. `make setup`: Create `.venv` and install dependencies.
+2. `make up`: Start local container stack.
+3. `make down`: Stop local container stack.
+4. `make lint`: Run Ruff checks.
+5. `make test`: Run Pytest.
+6. `make coverage`: Run Pytest with coverage report.
+7. `make ci-check`: Lint + test + parity + compose config + docker build.
+8. `make logs`: Tail service logs.
+
+## CI/CD
+
+1. CI runs on pushes and pull requests: lint, tests, environment parity, and Docker build checks.
+2. CD deploys to EC2 on push to `main` using Ansible.
+3. Deployment pipeline verifies app and monitoring health checks.
+
+Required GitHub repository secrets:
+
 1. `EC2_HOST`
 2. `EC2_USER`
 3. `EC2_SSH_PRIVATE_KEY`
+
+## Additional Documentation
+
+1. `docs/PROJECT.md`
+2. `docs/TOOLS.md`
+3. `docs/GETTING_STARTED.md`
+4. `docs/DEPLOYMENT.md`
+5. `docs/DEMO_SCRIPT.md`
+6. `infra/terraform/bootstrap/README.md`

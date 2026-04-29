@@ -4,6 +4,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .DS_Store
+backups/
+.coverage
+coverage.xml
 
 # Local env files
 .env

@@ -46,6 +46,21 @@ CREATE TABLE IF NOT EXISTS users (
   CONSTRAINT fk_users_admin FOREIGN KEY (linked_admin_id) REFERENCES admins(admin_id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS audit_logs (
+  audit_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NULL,
+  role ENUM('STUDENT', 'WARDEN', 'ADMIN') NULL,
+  action VARCHAR(120) NOT NULL,
+  route VARCHAR(255),
+  method VARCHAR(10),
+  ip_address VARCHAR(64),
+  details TEXT,
+  success TINYINT(1) DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_audit_user (user_id),
+  INDEX idx_audit_created (created_at)
+);
+
 CREATE TABLE IF NOT EXISTS rooms (
   room_id INT AUTO_INCREMENT PRIMARY KEY,
   room_number VARCHAR(20) NOT NULL UNIQUE,

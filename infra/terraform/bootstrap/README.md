@@ -1,11 +1,13 @@
-# Terraform Remote State Bootstrap
+# Terraform Bootstrap Backend
 
-This folder creates backend infrastructure for Terraform state:
+This directory is only for bootstrapping Terraform remote state resources.
 
-- S3 bucket for remote state
-- DynamoDB table for state locking
+## What It Creates
 
-## Usage
+1. S3 bucket for Terraform state
+2. DynamoDB table for state locking
+
+## Steps
 
 ```bash
 cd infra/terraform/bootstrap
@@ -15,10 +17,11 @@ terraform apply
 terraform output backend_hcl_snippet
 ```
 
-Then in `infra/terraform`:
+Use the output values to configure backend in `infra/terraform`:
 
 ```bash
+cd ../
 cp backend.hcl.example backend.hcl
-# paste values from backend_hcl_snippet
+# fill backend.hcl with values from backend_hcl_snippet
 terraform init -migrate-state -backend-config=backend.hcl
 ```

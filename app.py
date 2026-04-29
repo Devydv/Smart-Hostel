@@ -6,7 +6,7 @@ from prometheus_flask_exporter import PrometheusMetrics
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = "smart_hostel_secret_key"
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "smart_hostel_secret_key")
 
 _metrics = None
 if os.environ.get("ENABLE_METRICS", "true").lower() in {"1", "true", "yes", "on"}:
@@ -24,6 +24,100 @@ def internal_error(e):
     <h2 style="color:#ff5555;">500 — Internal Server Error</h2>
     <p style="background:#282a36;padding:1.5rem;border-radius:8px;overflow-x:auto;font-size:13px;">Something went wrong. Please try again.</p>
     <a href="/" style="color:#8be9fd;">← Back to Login</a></body></html>""", 500
+
+
+ROLE_PREFIXES = {
+    "/student/": "STUDENT",
+    "/warden/": "WARDEN",
+    "/admin/": "ADMIN",
+}
+
+AUDIT_METHODS = {"POST", "PUT", "DELETE"}
+AUDIT_SKIP_ENDPOINTS = {"login", "logout", "register"}
+
+_audit_table_ready = False
+
+
+def ensure_audit_table():
+    global _audit_table_ready
+    if _audit_table_ready:
+        return
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS audit_logs (
+              audit_id INT AUTO_INCREMENT PRIMARY KEY,
+              user_id INT NULL,
+              role ENUM('STUDENT', 'WARDEN', 'ADMIN') NULL,
+              action VARCHAR(120) NOT NULL,
+              route VARCHAR(255),
+              method VARCHAR(10),
+              ip_address VARCHAR(64),
+              details TEXT,
+              success TINYINT(1) DEFAULT 1,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              INDEX idx_audit_user (user_id),
+              INDEX idx_audit_created (created_at)
+            )
+            """
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        _audit_table_ready = True
+    except Exception:
+        pass
+
+
+def log_audit_event(action, details=None, success=True):
+    try:
+        ensure_audit_table()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO audit_logs
+              (user_id, role, action, route, method, ip_address, details, success)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                session.get("user_id"),
+                session.get("role"),
+                action,
+                request.path,
+                request.method,
+                request.remote_addr,
+                details,
+                1 if success else 0,
+            ),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception:
+        pass
+
+
+@app.before_request
+def enforce_role_prefix():
+    for prefix, role in ROLE_PREFIXES.items():
+        if request.path.startswith(prefix):
+            if session.get("role") != role:
+                return redirect(url_for("login"))
+            break
+
+
+@app.after_request
+def audit_write_requests(response):
+    if request.method in AUDIT_METHODS and request.endpoint not in AUDIT_SKIP_ENDPOINTS:
+        log_audit_event(
+            "request",
+            details=f"{request.method} {request.path}",
+            success=response.status_code < 400,
+        )
+    return response
 
 
 def login_required(role):
@@ -100,6 +194,8 @@ def login():
             session["warden_id"]       = user.get("linked_warden_id")
             session["admin_id"]        = user.get("linked_admin_id")
 
+            log_audit_event("login_success", details=f"role={role}")
+
             if role == "STUDENT":
                 return redirect(url_for("student_dashboard"))
             elif role == "WARDEN":
@@ -107,6 +203,7 @@ def login():
             elif role == "ADMIN":
                 return redirect(url_for("admin_dashboard"))
 
+        log_audit_event("login_failed", details=f"role={role} username={username}", success=False)
         return render_template("login.html", error="Invalid credentials. Check your email, password and selected role.")
     return render_template("login.html")
 
@@ -207,6 +304,7 @@ def register():
         except Exception as e:
             return render_template("register.html", error=f"Registration failed: {e}")
 
+        log_audit_event("register", details=f"role={role} email={email}")
         return redirect(url_for("login"))
 
     return render_template("register.html")
@@ -214,6 +312,7 @@ def register():
 
 @app.route("/logout")
 def logout():
+    log_audit_event("logout")
     session.clear()
     return redirect(url_for("login"))
 
